@@ -1,0 +1,10 @@
+[package]
+
+name = "mpvipc"
+version = "0.0.1"
+authors = [ "Jonas Frei <freijon@gmail.com>" ]
+
+[dependencies]
+serde = "1.0.1"
+serde_json = "1.0.0"
+clap = "2.23.2"
