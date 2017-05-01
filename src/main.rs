@@ -1,15 +1,15 @@
+extern crate clap;
 extern crate serde;
 extern crate serde_json;
-extern crate clap;
-
-use std::error::Error;
-use std::io::prelude::*;
-use std::process::{Command, Stdio};
-use serde_json::Value;
-use clap::{App, Arg};
 
 #[macro_use]
 mod macros;
+mod ipc;
+
+use std::process::exit;
+use std::collections::HashMap;
+use clap::{App, Arg, SubCommand};
+use ipc::*;
 
 fn main() {
 
@@ -20,146 +20,250 @@ fn main() {
         .arg(Arg::with_name("socket")
                     .short("S")
                     .long("socket")
-                    .value_name("PATH")
+                    .value_name("/path/to/socket")
                     .help("Specifies the path to the socket")
                     .default_value("/tmp/mpvsocket")
                     .takes_value(true)
                     .require_equals(true))
-        .arg(Arg::with_name("get_property")
-                    .short("g")
-                    .long("get-property")
-                    .value_name("Property")
-                    .help("Property that should be retrieved")
-                    .takes_value(true)
-                    .require_equals(true))
+        .subcommand(SubCommand::with_name("get-property")
+                    .about("Retrieves a mpv property (see 'property-list' for possible values)")
+                    .arg(Arg::with_name("property")
+                        .help("Property that should be retrieved")
+                        .takes_value(false)
+                        .required(true)))
+        .subcommand(SubCommand::with_name("set-property")
+                    .about("Sets a mpv property to <value>")
+                    .arg(Arg::with_name("property")
+                        .help("Property that should be set")
+                        .takes_value(false)
+                        .required(true))
+                    .arg(Arg::with_name("value")
+                        .help("Value to be set")
+                        .takes_value(false)
+                        .required(true)))
+        .subcommand(SubCommand::with_name("pause")
+                    .about("Pauses playing"))
+        .subcommand(SubCommand::with_name("toggle")
+                    .about("Toggles between play and pause. \
+                    If stopped starts playing. Does not support start playing \
+                    at song number (use play)."))
+        .subcommand(SubCommand::with_name("volume")
+                    .about("Sets the volume to <num> (0-100). \
+                    Use with --increase or --decrease to relatively change the volume")
+                    .arg(Arg::with_name("num")
+                        .value_name("num")
+                        .required(true))
+                    .arg(Arg::with_name("increase")
+                        .short("i")
+                        .long("increase")
+                        .help("If set will increase volume by <num>")
+                        .takes_value(false))
+                    .arg(Arg::with_name("decrease")
+                        .short("d")
+                        .long("decrease")
+                        .help("If set will decrease volume by <num>")
+                        .takes_value(false)))
+        .subcommand(SubCommand::with_name("next")
+                    .about("Starts playing next file on playlist"))
+        .subcommand(SubCommand::with_name("prev")
+                    .about("Starts playing previous file on playlist"))
+        .subcommand(SubCommand::with_name("restart")
+                    .about("Restarting playback of current file (same as 'seek -a 0')"))
+        .subcommand(SubCommand::with_name("seek")
+                    .about("Change the playback position. By default, \
+                    seeks by a relative amount of seconds. Use -n for negative values. \
+                    See --help for more options.")
+                    .arg(Arg::with_name("num")
+                        .value_name("num")
+                        .required(true))
+                    .arg(Arg::with_name("relative")
+                        .short("r")
+                        .long("relative")
+                        .help("Seek relative to current position (a value with -n seeks backwards).")
+                        .takes_value(false))
+                    .arg(Arg::with_name("absolute")
+                        .short("a")
+                        .long("absolute")
+                        .help("Seek to a given time (a value with -n starts from the end of the file).")
+                        .takes_value(false))
+                    .arg(Arg::with_name("absolute-percent")
+                        .long("absolute-percent")
+                        .help("Seek to a given percent position.")
+                        .takes_value(false))
+                    .arg(Arg::with_name("relative-percent")
+                        .long("relative-percent")
+                        .help("Seek relative to current position in percent.")
+                        .takes_value(false))
+                    .arg(Arg::with_name("negative")
+                        .short("n")
+                        .long("negative")
+                        .help("Use with negative values of <num>")
+                        .takes_value(false)))
+        .subcommand(SubCommand::with_name("metadata")
+                    .about("Prints all metadata attributes of the currently playing file"))
+        .subcommand(SubCommand::with_name("add")
+                    .about("Load the given file and play it. See --help for options.")
+                    .arg(Arg::with_name("file")
+                        .value_name("file")
+                        .required(true))
+                    .arg(Arg::with_name("mode")
+                        .short("m")
+                        .long("mode")
+                        .possible_values(&["replace", "append", "append-play"])
+                        .default_value("replace")
+                        .help("replace: Stop playback of the current file, and play the new file immediately. \
+                        append: Append the file to the playlist. \
+                        append-play: Append the file, and if nothing is currently playing, start playback. \
+                        (Always starts with the added file, even if the playlist was not empty before running this command.)")
+                        .takes_value(true)))
         .get_matches();
 
-    // if let Value::Bool(b) = is_paused_property["data"] {
-    //     set_mpv_property("pause", &format!("{}", !b));
-    // }
-    if let Some(property) = matches.value_of("get_property") {
-        match get_mpv_property::<bool>(property) {
-            Ok(data) => println!("{}", data),
+    //Input socket is always present, therefore unwrap
+    let socket = matches.value_of("socket").unwrap();
+
+    if let Some(submatches) = matches.subcommand_matches("get-property") {
+        let property = submatches.value_of("property").unwrap();
+        match get_mpv_property_string(socket, property) {
+            Ok(value) => {
+                println!("{}", value);
+                exit(0);
+            }
             Err(msg) => error!("Error: {}", msg),
         }
     }
-}
 
-trait ValueInterpretor: Sized {
-    fn get_value(value: Value) -> Result<Self, String>;
-}
-
-impl ValueInterpretor for String {
-    fn get_value(value: Value) -> Result<String, String> {
-        if let Value::Object(map) = value {
-            if let Value::String(ref error) = map["error"] {
-                if error == "success" {
-                    if let Value::String(ref s) = map["data"] {
-                        Ok(s.to_string())
-                    } else {
-                        Err("Value did not contain a String".to_string())
-                    }
-                } else {
-                    Err(error.to_string())
-                }
-            } else {
-                Err("Unexpected value received".to_string())
-            }
-        } else {
-            Err("Unexpected value received".to_string())
+    if let Some(submatches) = matches.subcommand_matches("set-property") {
+        let property = submatches.value_of("property").unwrap();
+        let value = submatches.value_of("value").unwrap();
+        if let Some(error_msg) = set_mpv_property(socket, property, value.to_string()) {
+            error!("Error: {}", error_msg);
         }
     }
-}
 
-impl ValueInterpretor for bool {
-    fn get_value(value: Value) -> Result<bool, String> {
-        if let Value::Object(map) = value {
-            if let Value::String(ref error) = map["error"] {
-                if error == "success" {
-                    if let Value::Bool(ref b) = map["data"] {
-                        Ok(*b)
-                    } else {
-                        Err("Value did not contain a bool".to_string())
-                    }
-                } else {
-                    Err(error.to_string())
-                }
-            } else {
-                Err("Unexpected value received".to_string())
-            }
-        } else {
-            Err("Unexpected value received".to_string())
+    if let Some(_) = matches.subcommand_matches("pause") {
+        if let Some(error_msg) = set_mpv_property(socket, "pause", true) {
+            error!("Error: {}", error_msg);
         }
     }
-}
 
-impl ValueInterpretor for f64 {
-    fn get_value(value: Value) -> Result<f64, String> {
-        if let Value::Object(map) = value {
-            if let Value::String(ref error) = map["error"] {
-                if error == "success" {
-                    if let Value::Number(ref num) = map["data"] {
-                        Ok(num.as_f64().unwrap())
-                    } else {
-                        Err("Value did not contain a f64".to_string())
+    if let Some(_) = matches.subcommand_matches("toggle") {
+        match get_mpv_property::<bool>(socket, "pause") {
+            Ok(paused) => {
+                if let Some(error_msg) = set_mpv_property(socket, "pause", !paused) {
+                    error!("Error: {}", error_msg);
+                }
+            }
+            Err(msg) => error!("Error: {}", msg),
+        }
+        exit(0);
+    }
+
+    if let Some(submatches) = matches.subcommand_matches("volume") {
+        if let Some(num) = submatches.value_of("num") {
+            if submatches.is_present("increase") || submatches.is_present("decrease") {
+                match get_mpv_property::<f64>(socket, "volume") {
+                    Ok(volume) => {
+                        if submatches.is_present("increase") {
+                            if let Some(error_msg) = set_mpv_property(socket,
+                                                                      "volume",
+                                                                      volume +
+                                                                      num.parse::<f64>().unwrap()) {
+                                error!("Error: {}", error_msg);
+                            }
+                        } else {
+                            if let Some(error_msg) = set_mpv_property(socket,
+                                                                      "volume",
+                                                                      volume -
+                                                                      num.parse::<f64>().unwrap()) {
+                                error!("Error: {}", error_msg);
+                            }
+                        }
                     }
-                } else {
-                    Err(error.to_string())
+                    Err(msg) => error!("Error: {}", msg),
                 }
             } else {
-                Err("Unexpected value received".to_string())
+                if let Some(error_msg) = set_mpv_property(socket, "volume", num.to_string()) {
+                    error!("Error: {}", error_msg);
+                }
             }
-        } else {
-            Err("Unexpected value received".to_string())
+        }
+        exit(0);
+    }
+
+    if let Some(_) = matches.subcommand_matches("next") {
+        if let Some(error_msg) = run_mpv_command(socket, "playlist-next", &vec![]) {
+            error!("Error: {}", error_msg);
+        }
+        exit(0);
+    }
+
+    if let Some(_) = matches.subcommand_matches("prev") {
+        if let Some(error_msg) = run_mpv_command(socket, "playlist-prev", &vec![]) {
+            error!("Error: {}", error_msg);
+        }
+        exit(0);
+    }
+
+    if let Some(_) = matches.subcommand_matches("restart") {
+        if let Some(error_msg) = run_mpv_command(socket, "seek", &vec!["0", "absolute"]) {
+            error!("Error: {}", error_msg);
+        }
+        exit(0);
+    }
+
+    if let Some(submatches) = matches.subcommand_matches("seek") {
+        if let Some(num) = submatches.value_of("num") {
+            let mut n = num.to_string();
+            if submatches.is_present("negative") {
+                n = format!("-{}", num);
+            }
+            n = n;
+            if submatches.is_present("absolute") {
+                if let Some(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "absolute"]) {
+                    error!("Error: {}", error_msg);
+                }
+                exit(0);
+            }
+            if submatches.is_present("absolute-percent") {
+                if let Some(error_msg) = run_mpv_command(socket,
+                                                         "seek",
+                                                         &vec![&n, "absolute-percent"]) {
+                    error!("Error: {}", error_msg);
+                }
+                exit(0);
+            }
+            if submatches.is_present("relative-percent") {
+                if let Some(error_msg) = run_mpv_command(socket,
+                                                         "seek",
+                                                         &vec![&n, "relative-percent"]) {
+                    error!("Error: {}", error_msg);
+                }
+                exit(0);
+            }
+            if let Some(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "relative"]) {
+                error!("Error: {}", error_msg);
+            }
+            exit(0);
         }
     }
-}
 
-fn get_mpv_property<T: ValueInterpretor>(property: &str) -> Result<T, String> {
-    let ipc_string = format!("{{ \"command\": [\"get_property\",\"{}\"] }}\n", property);
-
-    match serde_json::from_str::<Value>(&send_command_wait(&ipc_string)) {
-        Ok(val) => T::get_value(val),
-        Err(why) => error!("Error while getting property: {}", why),
-    }
-}
-
-fn set_mpv_property(property: &str, value: &str) -> Value {
-    let ipc_string = format!("{{ \"command\": [\"set_property\", \"{}\", {}] }}\n",
-                             property,
-                             value);
-    serde_json::from_str(&send_command_wait(&ipc_string)).unwrap()
-}
-
-fn send_command_wait(command: &str) -> String {
-    // Spawn the `socat` command
-    let process = match Command::new("socat")
-              .arg("-")
-              .arg("/tmp/mpvsocket")
-              .stdin(Stdio::piped())
-              .stdout(Stdio::piped())
-              .spawn() {
-        Err(why) => panic!("couldn't spawn socat: {}", why.description()),
-        Ok(process) => process,
-    };
-
-    // `stdin` has type `Option<ChildStdin>`, but since we know this instance
-    // must have one, we can directly `unwrap` it.
-    match process.stdin.unwrap().write_all(command.as_bytes()) {
-        Err(why) => panic!("couldn't write to socat stdin: {}", why.description()),
-        Ok(result) => result,
+    if let Some(_) = matches.subcommand_matches("metadata") {
+        let metadata: HashMap<String, String> = get_mpv_property(socket, "metadata").unwrap();
+        for (key, value) in metadata.iter() {
+            println!("{}: {}", key, value);
+        }
+        exit(0);
     }
 
-    // Because `stdin` does not live after the above calls, it is `drop`ed,
-    // and the pipe is closed.
-    //
-    // This is very important, otherwise `socat` wouldn't start processing the
-    // input we just sent.
-
-    // The `stdout` field also has type `Option<ChildStdout>` so must be unwrapped.
-    let mut s = String::new();
-    match process.stdout.unwrap().read_to_string(&mut s) {
-        Err(why) => panic!("couldn't read socat stdout: {}", why.description()),
-        Ok(_) => return s,
+    if let Some(submatches) = matches.subcommand_matches("add") {
+        if let Some(file) = submatches.value_of("file") {
+            if let Some(error_msg) = run_mpv_command(socket,
+                                                     "loadfile",
+                                                     &vec![file,
+                                                           submatches.value_of("mode").unwrap()]) {
+                error!("Error: {}", error_msg);
+            }
+        }
+        exit(0);
     }
 }
