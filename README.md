@@ -13,7 +13,6 @@ $ mpv --input-ipc-server=/tmp/mpvsocket ...
 ## Dependencies
 
 - `mpv`
-- `socat` 
 - `cargo` (makedep)
 
 ## Install

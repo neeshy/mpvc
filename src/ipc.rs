@@ -222,7 +222,6 @@ pub fn listen(socket: &str) {
 }
 
 pub fn wait_for_event(socket: &str, event: &str) {
-    // Spawn the `socat` command
     match UnixStream::connect(socket) {
         Ok(stream) => {
             let mut response = String::new();
