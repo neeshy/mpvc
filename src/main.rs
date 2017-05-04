@@ -25,13 +25,15 @@ fn main() {
                     .default_value("/tmp/mpvsocket")
                     .takes_value(true))
         .subcommand(SubCommand::with_name("get-property")
-                    .about("Retrieves a mpv property (see property 'property-list' for possible values)")
+                    .about("<property>\n\
+                    Retrieves a mpv property (see property 'property-list' for possible values)")
                     .arg(Arg::with_name("property")
                         .help("Property that should be retrieved")
                         .takes_value(false)
                         .required(true)))
         .subcommand(SubCommand::with_name("set-property")
-                    .about("Sets a mpv property to <value>")
+                    .about("<property> <value>\n\
+                    Sets a mpv property to <value>")
                     .arg(Arg::with_name("property")
                         .help("Property that should be set")
                         .takes_value(false)
@@ -47,7 +49,8 @@ fn main() {
                     If stopped starts playing. Does not support start playing \
                     at song number (use play)."))
         .subcommand(SubCommand::with_name("volume")
-                    .about("Sets the volume to <num> (0-100). \
+                    .about("[options] <num>\n\
+                    Sets the volume to <num> (0-100). \
                     Use with --increase or --decrease to relatively change the volume")
                     .arg(Arg::with_name("num")
                         .value_name("num")
@@ -69,9 +72,10 @@ fn main() {
         .subcommand(SubCommand::with_name("restart")
                     .about("Restarting playback of current file (same as 'seek -a 0')"))
         .subcommand(SubCommand::with_name("seek")
-                    .about("Change the playback position. By default, \
-                    seeks by a relative amount of seconds. Use -n for negative values. \
-                    See --help for more options.")
+                    .about("[options] <num>\n\
+                    Change the playback position. By default, \
+                    seeks by a relative amount of seconds. Use -n for negative values.\n\
+                    See -h for more options.")
                     .arg(Arg::with_name("num")
                         .value_name("num")
                         .required(true))
@@ -101,7 +105,8 @@ fn main() {
         .subcommand(SubCommand::with_name("metadata")
                     .about("Prints all metadata attributes of the currently playing file"))
         .subcommand(SubCommand::with_name("add")
-                    .about("Load the given file and play it. See --help for options.")
+                    .about("[options] <file>\n\
+                    Load the given file and play it. See -h for options.")
                     .arg(Arg::with_name("file")
                         .value_name("file")
                         .required(true))
@@ -109,11 +114,12 @@ fn main() {
                         .short("m")
                         .long("mode")
                         .possible_values(&["replace", "append", "append-play"])
+                        .hide_possible_values(true)
                         .default_value("replace")
-                        .help("replace: Stop playback of the current file, and play the new file immediately. \
-                        append: Append the file to the playlist. \
-                        append-play: Append the file, and if nothing is currently playing, start playback. \
-                        (Always starts with the added file, even if the playlist was not empty before running this command.)")
+                        .help("<replace|append|append-play>\n\
+                        <replace>: Stop playback of the current file, and play the new file immediately.\n\
+                        <append>: Append the file to the playlist.\n\
+                        <append-play>: Append the file, and if nothing is currently playing, start playback.\n\n")
                         .takes_value(true)))
         .subcommand(SubCommand::with_name("show-events")
                     .about("Prints all mpv events in real-time."))
@@ -122,7 +128,8 @@ fn main() {
         .subcommand(SubCommand::with_name("clear")
                     .about("Clear the playlist, except the currently played file."))
         .subcommand(SubCommand::with_name("wait-for-event")
-                    .about("Runs until the mpv event <event> is triggered.")
+                    .about("<event>\n\
+                    Runs until the mpv event <event> is triggered.")
                     .arg(Arg::with_name("event")
                         .value_name("event")
                         .required(true)))
