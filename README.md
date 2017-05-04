@@ -1,0 +1,44 @@
+# mpvipc
+
+An mpc-like control interface for mpv which uses sockets to control mpv, written in Rust.
+
+This tool is inspired by mpc, a command line interface for the Music Player Daemon.
+It uses subcommands to control any mpv instance over a given socket.
+
+Make sure mpv is started with the following option:
+`
+$ mpv --input-ipc-server=/tmp/mpvsocket song.flac
+`
+
+
+![ExampleOutput](https://github.com/Wildefyr/mpvc/blob/master/output.png)
+
+## Dependencies
+
+- `mpv`
+- `socat` or `nc`, `socat` preferred due to the differing implementations of
+netcat across UNIXes.
+- `seq` or `jot`
+
+## Install
+
+This is work in progress. Therefore there are no packages for any distribution at the moment
+
+#### Manual Install
+
+Use "cargo build --release" to build the program.
+The output binary will be found in 'target/release/mpvipc'
+
+## Usage
+
+Make sure mpv is started with the following option:
+`
+$ mpv --input-ipc-server=/tmp/mpvsocket
+`
+
+At the moment mpvipc does not launch mpv instances, so the instances have to be launched beforehand.
+I'm not sure yet where to go with this project so this might change in the future.
+
+## BUGS / IDEAS
+
+Check out the [Issue Tracker](https://github.com/freijon/mpvipc/issues)
