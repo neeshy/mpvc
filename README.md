@@ -1,6 +1,6 @@
 # mpvipc
 
-An mpc-like control interface which uses sockets to control mpv, written in Rust.
+An mpc-like cli tool for mpv which connects to existing mpv instances through sockets, written in Rust
 
 This tool is inspired by mpc, a command line interface for the Music Player Daemon.
 It uses subcommands to control any mpv instance over a given socket.
