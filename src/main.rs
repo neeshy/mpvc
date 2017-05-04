@@ -25,15 +25,15 @@ fn main() {
                     .default_value("/tmp/mpvsocket")
                     .takes_value(true))
         .subcommand(SubCommand::with_name("get-property")
-                    .about("<property>\n\
+                    .about("<PROPERTY>\n\
                     Retrieves a mpv property (see property 'property-list' for possible values)")
                     .arg(Arg::with_name("property")
                         .help("Property that should be retrieved")
                         .takes_value(false)
                         .required(true)))
         .subcommand(SubCommand::with_name("set-property")
-                    .about("<property> <value>\n\
-                    Sets a mpv property to <value>")
+                    .about("<PROPERTY> <VALUE>\n\
+                    Sets a mpv property to <VALUE>")
                     .arg(Arg::with_name("property")
                         .help("Property that should be set")
                         .takes_value(false)
@@ -49,8 +49,8 @@ fn main() {
                     If stopped starts playing. Does not support start playing \
                     at song number (use play)."))
         .subcommand(SubCommand::with_name("volume")
-                    .about("[options] <num>\n\
-                    Sets the volume to <num> (0-100). \
+                    .about("[OPTIONS] <NUM>\n\
+                    Sets the volume to <NUM> (0-100). \
                     Use with --increase or --decrease to relatively change the volume")
                     .arg(Arg::with_name("num")
                         .value_name("num")
@@ -72,12 +72,12 @@ fn main() {
         .subcommand(SubCommand::with_name("restart")
                     .about("Restarting playback of current file (same as 'seek -a 0')"))
         .subcommand(SubCommand::with_name("seek")
-                    .about("[options] <num>\n\
+                    .about("[OPTIONS] <NUM>\n\
                     Change the playback position. By default, \
                     seeks by a relative amount of seconds. Use -n for negative values.\n\
                     See -h for more options.")
                     .arg(Arg::with_name("num")
-                        .value_name("num")
+                        .value_name("NUM")
                         .required(true))
                     .arg(Arg::with_name("relative")
                         .short("r")
@@ -105,10 +105,10 @@ fn main() {
         .subcommand(SubCommand::with_name("metadata")
                     .about("Prints all metadata attributes of the currently playing file"))
         .subcommand(SubCommand::with_name("add")
-                    .about("[options] <file>\n\
+                    .about("[OPTIONS] <FILE>\n\
                     Load the given file and play it. See -h for options.")
                     .arg(Arg::with_name("file")
-                        .value_name("file")
+                        .value_name("FILE")
                         .required(true))
                     .arg(Arg::with_name("mode")
                         .short("m")
@@ -128,7 +128,7 @@ fn main() {
         .subcommand(SubCommand::with_name("clear")
                     .about("Clear the playlist, except the currently played file."))
         .subcommand(SubCommand::with_name("wait-for-event")
-                    .about("<event>\n\
+                    .about("<EVENT>\n\
                     Runs until the mpv event <event> is triggered.")
                     .arg(Arg::with_name("event")
                         .value_name("event")

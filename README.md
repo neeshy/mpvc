@@ -7,7 +7,7 @@ It uses subcommands to control any mpv instance over a given socket.
 
 Make sure mpv is started with the following option:
 `
-$ mpv --input-ipc-server=/tmp/mpvsocket song.flac
+$ mpv --input-ipc-server=/tmp/mpvsocket ...
 `
 
 ## Dependencies
@@ -18,7 +18,9 @@ $ mpv --input-ipc-server=/tmp/mpvsocket song.flac
 
 ## Install
 
-This is work in progress. Therefore there are no packages for any distribution at the moment
+- [Arch](https://aur.archlinux.org/packages/mpvipc-git) - `yaourt mpvipc-git`
+
+If you have packaged mpvc for your distribution, let me know so I can add it here.
 
 #### Manual Install
 
