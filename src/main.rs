@@ -74,7 +74,7 @@ fn main() {
         .subcommand(SubCommand::with_name("seek")
                     .about("[OPTIONS] <NUM>\n\
                     Change the playback position. By default, \
-                    seeks by a relative amount of seconds. Use -n for negative values.\n\
+                    seeks by a relative amount of seconds. Use -n for negative values. \
                     See -h for more options.")
                     .arg(Arg::with_name("num")
                         .value_name("NUM")

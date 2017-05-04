@@ -1,7 +1,8 @@
 use std::error::Error;
 use std::io::prelude::*;
 use std::io::BufReader;
-use std::process::{Command, Stdio};
+use std::os::unix::net::UnixStream;
+use std::net::Shutdown;
 use std::collections::HashMap;
 use serde_json::{self, Value};
 
@@ -198,98 +199,106 @@ pub fn run_mpv_command(socket: &str, command: &str, args: &Vec<&str>) -> Option<
 }
 
 pub fn listen(socket: &str) {
-    // Spawn the `socat` command
-    let mut process = match Command::new("socat")
-              .arg("-")
-              .arg(socket)
-              .stdout(Stdio::piped())
-              .spawn() {
-        Err(why) => panic!("couldn't spawn socat: {}", why.description()),
-        Ok(process) => process,
-    };
-
-    let mut output = BufReader::new(process.stdout.as_mut().unwrap());
-    let mut line = String::new();
-
-    loop {
-        output.read_line(&mut line).unwrap();
-        match serde_json::from_str::<Value>(&line) {
-            Ok(event) => {
-                if let Value::String(ref name) = event["event"] {
-                    println!("{}", name);
+    match UnixStream::connect(socket) {
+        Ok(stream) => {
+            let mut response = String::new();
+            let mut reader = BufReader::new(&stream);
+            loop {
+                reader.read_line(&mut response).unwrap();
+                response = response;
+                match serde_json::from_str::<Value>(&response) {
+                    Ok(e) => {
+                        if let Value::String(ref name) = e["event"] {
+                            println!("{}", name);
+                        }
+                    }
+                    Err(why) => error!("{}", why.description().to_string()),
                 }
+                response.clear();
             }
-            Err(why) => error!("{}", why.description().to_string()),
         }
-        line.clear();
+        Err(why) => error!("Error: Could not connect to socket: {}", why.description()),
     }
 }
 
 pub fn wait_for_event(socket: &str, event: &str) {
     // Spawn the `socat` command
-    let mut process = match Command::new("socat")
-              .arg("-")
-              .arg(socket)
-              .stdout(Stdio::piped())
-              .spawn() {
-        Err(why) => panic!("couldn't spawn socat: {}", why.description()),
-        Ok(process) => process,
-    };
-    {
-        let mut output = BufReader::new(process.stdout.as_mut().unwrap());
-        let mut line = String::new();
-
-        loop {
-            output.read_line(&mut line).unwrap();
-            line = line;
-            match serde_json::from_str::<Value>(&line) {
-                Ok(e) => {
-                    if let Value::String(ref name) = e["event"] {
-                        if name.as_str() == event {
-                            break;
+    match UnixStream::connect(socket) {
+        Ok(stream) => {
+            let mut response = String::new();
+            let mut reader = BufReader::new(&stream);
+            loop {
+                reader.read_line(&mut response).unwrap();
+                response = response;
+                match serde_json::from_str::<Value>(&response) {
+                    Ok(e) => {
+                        if let Value::String(ref name) = e["event"] {
+                            if name.as_str() == event {
+                                break;
+                            }
                         }
                     }
+                    Err(why) => error!("{}", why.description().to_string()),
                 }
-                Err(why) => error!("{}", why.description().to_string()),
+                response.clear();
             }
-            line.clear();
+            stream.shutdown(Shutdown::Both).expect("socket shutdown");
         }
-    }
-
-    if let Err(msg) = process.kill() {
-        println_stderr!("Could not kill socat: {}", msg);
+        Err(why) => error!("Error: Could not connect to socket: {}", why.description()),
     }
 }
 
+// fn send_command_sync_socat(socket: &str, command: &str) -> String {
+//     // Spawn the `socat` command
+//     let process = match Command::new("socat")
+//               .arg("-")
+//               .arg(socket)
+//               .stdin(Stdio::piped())
+//               .stdout(Stdio::piped())
+//               .spawn() {
+//         Err(why) => panic!("couldn't spawn socat: {}", why.description()),
+//         Ok(process) => process,
+//     };
+
+//     // `stdin` has type `Option<ChildStdin>`, but since we know this instance
+//     // must have one, we can directly `unwrap` it.
+//     match process.stdin.unwrap().write_all(command.as_bytes()) {
+//         Err(why) => panic!("couldn't write to socat stdin: {}", why.description()),
+//         Ok(result) => result,
+//     }
+
+//     // Because `stdin` does not live after the above calls, it is `drop`ed,
+//     // and the pipe is closed.
+//     //
+//     // This is very important, otherwise `socat` wouldn't start processing the
+//     // input we just sent.
+
+//     // The `stdout` field also has type `Option<ChildStdout>` so must be unwrapped.
+//     let mut s = String::new();
+//     match process.stdout.unwrap().read_to_string(&mut s) {
+//         Err(why) => panic!("couldn't read socat stdout: {}", why.description()),
+//         Ok(_) => return s,
+//     }
+// }
+
 fn send_command_sync(socket: &str, command: &str) -> String {
-    // Spawn the `socat` command
-    let process = match Command::new("socat")
-              .arg("-")
-              .arg(socket)
-              .stdin(Stdio::piped())
-              .stdout(Stdio::piped())
-              .spawn() {
-        Err(why) => panic!("couldn't spawn socat: {}", why.description()),
-        Ok(process) => process,
-    };
-
-    // `stdin` has type `Option<ChildStdin>`, but since we know this instance
-    // must have one, we can directly `unwrap` it.
-    match process.stdin.unwrap().write_all(command.as_bytes()) {
-        Err(why) => panic!("couldn't write to socat stdin: {}", why.description()),
-        Ok(result) => result,
-    }
-
-    // Because `stdin` does not live after the above calls, it is `drop`ed,
-    // and the pipe is closed.
-    //
-    // This is very important, otherwise `socat` wouldn't start processing the
-    // input we just sent.
-
-    // The `stdout` field also has type `Option<ChildStdout>` so must be unwrapped.
-    let mut s = String::new();
-    match process.stdout.unwrap().read_to_string(&mut s) {
-        Err(why) => panic!("couldn't read socat stdout: {}", why.description()),
-        Ok(_) => return s,
+    match UnixStream::connect(socket) {
+        Ok(mut stream) => {
+            match stream.write_all(command.as_bytes()) {
+                Err(why) => error!("Error: Could not write to socket: {}", why.description()),
+                Ok(_) => {
+                    let mut response = String::new();
+                    {
+                        let mut reader = BufReader::new(&stream);
+                        reader.read_line(&mut response).unwrap();
+                    }
+                    stream
+                        .shutdown(Shutdown::Both)
+                        .expect("shutdown function failed");
+                    response
+                }
+            }
+        }
+        Err(why) => error!("Error: Could not connect to socket: {}", why.description()),
     }
 }
