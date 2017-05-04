@@ -169,7 +169,7 @@ fn main() {
     }
 
     if let Some(submatches) = matches.subcommand_matches("volume") {
-        let num = submatches.value_of("num");
+        let num = submatches.value_of("num").unwrap();
         if submatches.is_present("increase") || submatches.is_present("decrease") {
             match get_mpv_property::<f64>(socket, "volume") {
                 Ok(volume) => {
