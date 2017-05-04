@@ -23,10 +23,9 @@ fn main() {
                     .value_name("/path/to/socket")
                     .help("Specifies the path to the socket")
                     .default_value("/tmp/mpvsocket")
-                    .takes_value(true)
-                    .require_equals(true))
+                    .takes_value(true))
         .subcommand(SubCommand::with_name("get-property")
-                    .about("Retrieves a mpv property (see 'property-list' for possible values)")
+                    .about("Retrieves a mpv property (see property 'property-list' for possible values)")
                     .arg(Arg::with_name("property")
                         .help("Property that should be retrieved")
                         .takes_value(false)
@@ -116,6 +115,17 @@ fn main() {
                         append-play: Append the file, and if nothing is currently playing, start playback. \
                         (Always starts with the added file, even if the playlist was not empty before running this command.)")
                         .takes_value(true)))
+        .subcommand(SubCommand::with_name("show-events")
+                    .about("Prints all mpv events in real-time."))
+        .subcommand(SubCommand::with_name("stop")
+                    .about("Stop playback and clear playlist."))
+        .subcommand(SubCommand::with_name("clear")
+                    .about("Clear the playlist, except the currently played file."))
+        .subcommand(SubCommand::with_name("wait-for-event")
+                    .about("Runs until the mpv event <event> is triggered.")
+                    .arg(Arg::with_name("event")
+                        .value_name("event")
+                        .required(true)))
         .get_matches();
 
     //Input socket is always present, therefore unwrap
@@ -212,39 +222,38 @@ fn main() {
     }
 
     if let Some(submatches) = matches.subcommand_matches("seek") {
-        if let Some(num) = submatches.value_of("num") {
-            let mut n = num.to_string();
-            if submatches.is_present("negative") {
-                n = format!("-{}", num);
-            }
-            n = n;
-            if submatches.is_present("absolute") {
-                if let Some(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "absolute"]) {
-                    error!("Error: {}", error_msg);
-                }
-                exit(0);
-            }
-            if submatches.is_present("absolute-percent") {
-                if let Some(error_msg) = run_mpv_command(socket,
-                                                         "seek",
-                                                         &vec![&n, "absolute-percent"]) {
-                    error!("Error: {}", error_msg);
-                }
-                exit(0);
-            }
-            if submatches.is_present("relative-percent") {
-                if let Some(error_msg) = run_mpv_command(socket,
-                                                         "seek",
-                                                         &vec![&n, "relative-percent"]) {
-                    error!("Error: {}", error_msg);
-                }
-                exit(0);
-            }
-            if let Some(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "relative"]) {
+        let num = submatches.value_of("num").unwrap();
+        let mut n = num.to_string();
+        if submatches.is_present("negative") {
+            n = format!("-{}", num);
+        }
+        n = n;
+        if submatches.is_present("absolute") {
+            if let Some(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "absolute"]) {
                 error!("Error: {}", error_msg);
             }
             exit(0);
         }
+        if submatches.is_present("absolute-percent") {
+            if let Some(error_msg) = run_mpv_command(socket,
+                                                     "seek",
+                                                     &vec![&n, "absolute-percent"]) {
+                error!("Error: {}", error_msg);
+            }
+            exit(0);
+        }
+        if submatches.is_present("relative-percent") {
+            if let Some(error_msg) = run_mpv_command(socket,
+                                                     "seek",
+                                                     &vec![&n, "relative-percent"]) {
+                error!("Error: {}", error_msg);
+            }
+            exit(0);
+        }
+        if let Some(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "relative"]) {
+            error!("Error: {}", error_msg);
+        }
+        exit(0);
     }
 
     if let Some(_) = matches.subcommand_matches("metadata") {
@@ -256,14 +265,36 @@ fn main() {
     }
 
     if let Some(submatches) = matches.subcommand_matches("add") {
-        if let Some(file) = submatches.value_of("file") {
-            if let Some(error_msg) = run_mpv_command(socket,
-                                                     "loadfile",
-                                                     &vec![file,
-                                                           submatches.value_of("mode").unwrap()]) {
-                error!("Error: {}", error_msg);
-            }
+        let file = submatches.value_of("file").unwrap();
+        if let Some(error_msg) = run_mpv_command(socket,
+                                                 "loadfile",
+                                                 &vec![file,
+                                                       submatches.value_of("mode").unwrap()]) {
+            error!("Error: {}", error_msg);
         }
         exit(0);
+    }
+
+    if let Some(_) = matches.subcommand_matches("show-events") {
+        listen(socket);
+    }
+
+    if let Some(_) = matches.subcommand_matches("stop") {
+        if let Some(error_msg) = run_mpv_command(socket, "stop", &vec![]) {
+            error!("Error: {}", error_msg);
+        }
+        exit(0);
+    }
+
+    if let Some(_) = matches.subcommand_matches("clear") {
+        if let Some(error_msg) = run_mpv_command(socket, "playlist-clear", &vec![]) {
+            error!("Error: {}", error_msg);
+        }
+        exit(0);
+    }
+
+    if let Some(submatches) = matches.subcommand_matches("wait-for-event") {
+        let event = submatches.value_of("event").unwrap();
+        wait_for_event(socket, event);
     }
 }

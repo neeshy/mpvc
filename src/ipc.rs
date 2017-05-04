@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::process::{Command, Stdio};
 use std::collections::HashMap;
 use serde_json::{self, Value};
@@ -126,7 +127,7 @@ impl TypeHandler for HashMap<String, String> {
 pub fn get_mpv_property<T: TypeHandler>(socket: &str, property: &str) -> Result<T, String> {
     let ipc_string = format!("{{ \"command\": [\"get_property\",\"{}\"] }}\n", property);
 
-    match serde_json::from_str::<Value>(&send_command_wait(socket, &ipc_string)) {
+    match serde_json::from_str::<Value>(&send_command_sync(socket, &ipc_string)) {
         Ok(val) => T::get_value(val),
         Err(why) => error!("Error while getting property: {}", why),
     }
@@ -134,7 +135,7 @@ pub fn get_mpv_property<T: TypeHandler>(socket: &str, property: &str) -> Result<
 
 pub fn get_mpv_property_string(socket: &str, property: &str) -> Result<String, String> {
     let ipc_string = format!("{{ \"command\": [\"get_property\",\"{}\"] }}\n", property);
-    match serde_json::from_str::<Value>(&send_command_wait(socket, &ipc_string)) {
+    match serde_json::from_str::<Value>(&send_command_sync(socket, &ipc_string)) {
         Ok(val) => {
             if let Value::Object(map) = val {
                 if let Value::String(ref error) = map["error"] {
@@ -165,7 +166,7 @@ pub fn set_mpv_property<T: TypeHandler>(socket: &str, property: &str, value: T) 
     let ipc_string = format!("{{ \"command\": [\"set_property\", \"{}\", {}] }}\n",
                              property,
                              value.as_string());
-    match serde_json::from_str::<Value>(&send_command_wait(socket, &ipc_string)) {
+    match serde_json::from_str::<Value>(&send_command_sync(socket, &ipc_string)) {
         Ok(_) => None,
         Err(why) => Some(why.description().to_string()),
     }
@@ -180,7 +181,7 @@ pub fn run_mpv_command(socket: &str, command: &str, args: &Vec<&str>) -> Option<
     }
     ipc_string.push_str("] }\n");
     ipc_string = ipc_string;
-    match serde_json::from_str::<Value>(&send_command_wait(socket, &ipc_string)) {
+    match serde_json::from_str::<Value>(&send_command_sync(socket, &ipc_string)) {
         Ok(feedback) => {
             if let Value::String(ref error) = feedback["error"] {
                 if error == "success" {
@@ -196,7 +197,71 @@ pub fn run_mpv_command(socket: &str, command: &str, args: &Vec<&str>) -> Option<
     }
 }
 
-fn send_command_wait(socket: &str, command: &str) -> String {
+pub fn listen(socket: &str) {
+    // Spawn the `socat` command
+    let mut process = match Command::new("socat")
+              .arg("-")
+              .arg(socket)
+              .stdout(Stdio::piped())
+              .spawn() {
+        Err(why) => panic!("couldn't spawn socat: {}", why.description()),
+        Ok(process) => process,
+    };
+
+    let mut output = BufReader::new(process.stdout.as_mut().unwrap());
+    let mut line = String::new();
+
+    loop {
+        output.read_line(&mut line).unwrap();
+        match serde_json::from_str::<Value>(&line) {
+            Ok(event) => {
+                if let Value::String(ref name) = event["event"] {
+                    println!("{}", name);
+                }
+            }
+            Err(why) => error!("{}", why.description().to_string()),
+        }
+        line.clear();
+    }
+}
+
+pub fn wait_for_event(socket: &str, event: &str) {
+    // Spawn the `socat` command
+    let mut process = match Command::new("socat")
+              .arg("-")
+              .arg(socket)
+              .stdout(Stdio::piped())
+              .spawn() {
+        Err(why) => panic!("couldn't spawn socat: {}", why.description()),
+        Ok(process) => process,
+    };
+    {
+        let mut output = BufReader::new(process.stdout.as_mut().unwrap());
+        let mut line = String::new();
+
+        loop {
+            output.read_line(&mut line).unwrap();
+            line = line;
+            match serde_json::from_str::<Value>(&line) {
+                Ok(e) => {
+                    if let Value::String(ref name) = e["event"] {
+                        if name.as_str() == event {
+                            break;
+                        }
+                    }
+                }
+                Err(why) => error!("{}", why.description().to_string()),
+            }
+            line.clear();
+        }
+    }
+
+    if let Err(msg) = process.kill() {
+        println_stderr!("Could not kill socat: {}", msg);
+    }
+}
+
+fn send_command_sync(socket: &str, command: &str) -> String {
     // Spawn the `socat` command
     let process = match Command::new("socat")
               .arg("-")
