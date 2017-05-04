@@ -169,32 +169,31 @@ fn main() {
     }
 
     if let Some(submatches) = matches.subcommand_matches("volume") {
-        if let Some(num) = submatches.value_of("num") {
-            if submatches.is_present("increase") || submatches.is_present("decrease") {
-                match get_mpv_property::<f64>(socket, "volume") {
-                    Ok(volume) => {
-                        if submatches.is_present("increase") {
-                            if let Some(error_msg) = set_mpv_property(socket,
-                                                                      "volume",
-                                                                      volume +
-                                                                      num.parse::<f64>().unwrap()) {
-                                error!("Error: {}", error_msg);
-                            }
-                        } else {
-                            if let Some(error_msg) = set_mpv_property(socket,
-                                                                      "volume",
-                                                                      volume -
-                                                                      num.parse::<f64>().unwrap()) {
-                                error!("Error: {}", error_msg);
-                            }
+        let num = submatches.value_of("num");
+        if submatches.is_present("increase") || submatches.is_present("decrease") {
+            match get_mpv_property::<f64>(socket, "volume") {
+                Ok(volume) => {
+                    if submatches.is_present("increase") {
+                        if let Some(error_msg) = set_mpv_property(socket,
+                                                                  "volume",
+                                                                  volume +
+                                                                  num.parse::<f64>().unwrap()) {
+                            error!("Error: {}", error_msg);
+                        }
+                    } else {
+                        if let Some(error_msg) = set_mpv_property(socket,
+                                                                  "volume",
+                                                                  volume -
+                                                                  num.parse::<f64>().unwrap()) {
+                            error!("Error: {}", error_msg);
                         }
                     }
-                    Err(msg) => error!("Error: {}", msg),
                 }
-            } else {
-                if let Some(error_msg) = set_mpv_property(socket, "volume", num.to_string()) {
-                    error!("Error: {}", error_msg);
-                }
+                Err(msg) => error!("Error: {}", msg),
+            }
+        } else {
+            if let Some(error_msg) = set_mpv_property(socket, "volume", num.to_string()) {
+                error!("Error: {}", error_msg);
             }
         }
         exit(0);
@@ -296,5 +295,6 @@ fn main() {
     if let Some(submatches) = matches.subcommand_matches("wait-for-event") {
         let event = submatches.value_of("event").unwrap();
         wait_for_event(socket, event);
+        exit(0);
     }
 }
