@@ -10,15 +10,11 @@ Make sure mpv is started with the following option:
 $ mpv --input-ipc-server=/tmp/mpvsocket song.flac
 `
 
-
-![ExampleOutput](https://github.com/Wildefyr/mpvc/blob/master/output.png)
-
 ## Dependencies
 
 - `mpv`
-- `socat` or `nc`, `socat` preferred due to the differing implementations of
-netcat across UNIXes.
-- `seq` or `jot`
+- `socat` 
+- `cargo` (makedep)
 
 ## Install
 
