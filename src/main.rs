@@ -106,7 +106,7 @@ fn main() {
                     .about("Prints all metadata attributes of the currently playing file"))
         .subcommand(SubCommand::with_name("add")
                     .about("[OPTIONS] <FILE>\n\
-                    Load the given file and play it. See -h for options.")
+                    Load the given file or playlist and play it. See -h for options.")
                     .arg(Arg::with_name("file")
                         .value_name("FILE")
                         .required(true))
@@ -304,4 +304,19 @@ fn main() {
         wait_for_event(socket, event);
         exit(0);
     }
+
+    // let mut playlist: Playlist = Playlist::get(socket).unwrap();
+    // //playlist.remove_id(1).remove_id(1);
+    // for entry in playlist.entries.iter() {
+    //     println!("{}\t{}", entry.id, entry.filename);
+    //     // println!("id: {}\n\
+    //     // filename: {}\n\
+    //     // title: {}\n\
+    //     // current: {}\n\n",
+    //     //          entry.id,
+    //     //          entry.filename,
+    //     //          entry.title,
+    //     //          entry.current);
+    // }
+    // println!("Currently playing ID={}", playlist.current_id().unwrap());
 }

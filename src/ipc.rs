@@ -6,6 +6,72 @@ use std::net::Shutdown;
 use std::collections::HashMap;
 use serde_json::{self, Value};
 
+pub struct Playlist {
+    pub socket: String,
+    pub entries: Vec<PlaylistEntry>,
+}
+
+#[derive(Debug)]
+pub struct PlaylistEntry {
+    pub id: usize,
+    pub filename: String,
+    pub title: String,
+    pub current: bool,
+}
+
+pub trait PlaylistHandler {
+    fn get(socket: &str) -> Option<Playlist>;
+    fn shuffle(socket: &str) -> Option<Playlist>;
+    fn remove_id(&mut self, id: usize) -> &mut Playlist;
+    fn current_id(&self) -> Option<usize>;
+}
+
+impl PlaylistHandler for Playlist {
+    fn get(socket: &str) -> Option<Playlist> {
+        if let Ok(playlist) = get_mpv_property(socket, "playlist") {
+            Some(Playlist {
+                     socket: socket.to_string(),
+                     entries: playlist,
+                 })
+        } else {
+            None
+        }
+    }
+
+    fn shuffle(socket: &str) -> Option<Playlist> {
+        if let Some(error_msg) = run_mpv_command(socket, "playlist-shuffle", &vec![]) {
+            error!("Error: {}", error_msg);
+        }
+        if let Ok(playlist) = get_mpv_property(socket, "playlist") {
+            Some(Playlist {
+                     socket: socket.to_string(),
+                     entries: playlist,
+                 })
+        } else {
+            None
+        }
+    }
+
+    fn remove_id(&mut self, id: usize) -> &mut Playlist {
+        self.entries.remove(id);
+        if let Some(error_msg) = run_mpv_command(&self.socket,
+                                                 "playlist-remove",
+                                                 &vec![&id.to_string()]) {
+            error!("Error: {}", error_msg);
+        }
+        self
+    }
+
+    fn current_id(&self) -> Option<usize> {
+        for entry in self.entries.iter() {
+            if entry.current {
+                return Some(entry.id);
+            }
+        }
+        None
+    }
+}
+
 pub trait TypeHandler: Sized {
     fn get_value(value: Value) -> Result<Self, String>;
     fn as_string(&self) -> String;
@@ -106,6 +172,54 @@ impl TypeHandler for HashMap<String, String> {
                         }
                         output_map = output_map;
                         Ok(output_map)
+                    } else {
+                        Err("Value did not contain a HashMap".to_string())
+                    }
+                } else {
+                    Err(error.to_string())
+                }
+            } else {
+                Err("Unexpected value received".to_string())
+            }
+        } else {
+            Err("Unexpected value received".to_string())
+        }
+    }
+
+    fn as_string(&self) -> String {
+        format!("{:?}", self)
+    }
+}
+
+impl TypeHandler for Vec<PlaylistEntry> {
+    fn get_value(value: Value) -> Result<Vec<PlaylistEntry>, String> {
+        if let Value::Object(map) = value {
+            if let Value::String(ref error) = map["error"] {
+                if error == "success" && map.contains_key("data") {
+                    if let Value::Array(ref playlist_vec) = map["data"] {
+                        let mut output: Vec<PlaylistEntry> = Vec::new();
+                        for (id, entry) in playlist_vec.iter().enumerate() {
+                            let mut filename: String = String::new();
+                            let mut title: String = String::new();
+                            let mut current: bool = false;
+                            if let Value::String(ref f) = entry["filename"] {
+                                filename = f.to_string();
+                            }
+                            if let Value::String(ref t) = entry["title"] {
+                                title = t.to_string();
+                            }
+                            if let Value::Bool(ref b) = entry["current"] {
+                                current = *b;
+                            }
+                            output.push(PlaylistEntry {
+                                            id: id,
+                                            filename: filename,
+                                            title: title,
+                                            current: current,
+                                        });
+                        }
+                        output = output;
+                        Ok(output)
                     } else {
                         Err("Value did not contain a HashMap".to_string())
                     }
