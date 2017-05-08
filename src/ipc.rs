@@ -3,6 +3,7 @@ use std::io::prelude::*;
 use std::io::BufReader;
 use std::os::unix::net::UnixStream;
 use std::net::Shutdown;
+use std::iter::Iterator;
 use std::collections::HashMap;
 use serde_json::{self, Value};
 
@@ -21,8 +22,9 @@ pub struct PlaylistEntry {
 
 pub trait PlaylistHandler {
     fn get(socket: &str) -> Option<Playlist>;
-    fn shuffle(socket: &str) -> Option<Playlist>;
+    fn shuffle(&mut self) -> &mut Playlist;
     fn remove_id(&mut self, id: usize) -> &mut Playlist;
+    fn move_entry(&mut self, from: usize, to: usize) -> &mut Playlist;
     fn current_id(&self) -> Option<usize>;
 }
 
@@ -38,26 +40,52 @@ impl PlaylistHandler for Playlist {
         }
     }
 
-    fn shuffle(socket: &str) -> Option<Playlist> {
-        if let Some(error_msg) = run_mpv_command(socket, "playlist-shuffle", &vec![]) {
+    fn shuffle(&mut self) -> &mut Playlist {
+        if let Err(error_msg) = run_mpv_command(&self.socket, "playlist-shuffle", &vec![]) {
             error!("Error: {}", error_msg);
         }
-        if let Ok(playlist) = get_mpv_property(socket, "playlist") {
-            Some(Playlist {
-                     socket: socket.to_string(),
-                     entries: playlist,
-                 })
-        } else {
-            None
+        if let Ok(mut playlist_entries) =
+            get_mpv_property::<Vec<PlaylistEntry>>(&self.socket, "playlist") {
+            if self.entries.len() == playlist_entries.len() {
+                for (i, entry) in playlist_entries.drain(0..).enumerate() {
+                    self.entries[i] = entry;
+                }
+            }
         }
+        self
     }
 
     fn remove_id(&mut self, id: usize) -> &mut Playlist {
         self.entries.remove(id);
-        if let Some(error_msg) = run_mpv_command(&self.socket,
-                                                 "playlist-remove",
-                                                 &vec![&id.to_string()]) {
+        if let Err(error_msg) = run_mpv_command(&self.socket,
+                                                "playlist-remove",
+                                                &vec![&id.to_string()]) {
             error!("Error: {}", error_msg);
+        }
+        self
+    }
+
+    fn move_entry(&mut self, from: usize, to: usize) -> &mut Playlist {
+        if from != to {
+            if let Err(error_msg) = run_mpv_command(&self.socket,
+                                                    "playlist-move",
+                                                    &vec![&from.to_string(), &to.to_string()]) {
+                error!("Error: {}", error_msg);
+            }
+            if from < to {
+                self.entries[from].id = to - 1;
+                self.entries[to].id = to - 2;
+                for i in from..to - 2 {
+                    self.entries[i + 1].id = i;
+                }
+                self.entries.sort_by_key(|entry| entry.id);
+            } else if from > to {
+                self.entries[from].id = to;
+                for i in to..from - 1 {
+                    self.entries[i].id = i + 1;
+                }
+                self.entries.sort_by_key(|entry| entry.id);
+            }
         }
         self
     }
@@ -221,7 +249,7 @@ impl TypeHandler for Vec<PlaylistEntry> {
                         output = output;
                         Ok(output)
                     } else {
-                        Err("Value did not contain a HashMap".to_string())
+                        Err("Value did not contain a playlist".to_string())
                     }
                 } else {
                     Err(error.to_string())
@@ -277,17 +305,20 @@ pub fn get_mpv_property_string(socket: &str, property: &str) -> Result<String, S
     }
 }
 
-pub fn set_mpv_property<T: TypeHandler>(socket: &str, property: &str, value: T) -> Option<String> {
+pub fn set_mpv_property<T: TypeHandler>(socket: &str,
+                                        property: &str,
+                                        value: T)
+                                        -> Result<(), String> {
     let ipc_string = format!("{{ \"command\": [\"set_property\", \"{}\", {}] }}\n",
                              property,
                              value.as_string());
     match serde_json::from_str::<Value>(&send_command_sync(socket, &ipc_string)) {
-        Ok(_) => None,
-        Err(why) => Some(why.description().to_string()),
+        Ok(_) => Ok(()),
+        Err(why) => Err(why.description().to_string()),
     }
 }
 
-pub fn run_mpv_command(socket: &str, command: &str, args: &Vec<&str>) -> Option<String> {
+pub fn run_mpv_command(socket: &str, command: &str, args: &Vec<&str>) -> Result<(), String> {
     let mut ipc_string = format!("{{ \"command\": [\"{}\"", command);
     if args.len() > 0 {
         for arg in args.iter() {
@@ -300,15 +331,15 @@ pub fn run_mpv_command(socket: &str, command: &str, args: &Vec<&str>) -> Option<
         Ok(feedback) => {
             if let Value::String(ref error) = feedback["error"] {
                 if error == "success" {
-                    None
+                    Ok(())
                 } else {
-                    Some(error.to_string())
+                    Err(error.to_string())
                 }
             } else {
                 error!("Error: Unexpected result received");
             }
         }
-        Err(why) => Some(why.description().to_string()),
+        Err(why) => Err(why.description().to_string()),
     }
 }
 
