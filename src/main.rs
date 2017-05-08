@@ -18,7 +18,7 @@ use ipc::*;
 fn main() {
 
     let matches = App::new("mpvipc")
-        .version("0.0.1")
+        .version("0.1.1")
         .author("Jonas Frei <freijon@gmail.com>")
         .about("A mpc-like cli tool for mpv which connects to existing mpv instances through sockets")
         .arg(Arg::with_name("socket")
