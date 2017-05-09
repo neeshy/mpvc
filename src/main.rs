@@ -20,7 +20,7 @@ use ipc::*;
 fn main() {
 
     let matches = app_from_crate!()
-        .setting(AppSettings::SubcommandRequiredElseHelp)
+        //.setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(Arg::with_name("socket")
             .short("S")
             .long("socket")
@@ -28,8 +28,8 @@ fn main() {
             .help("Specifies the path to the socket")
             .default_value("/tmp/mpvsocket")
             .takes_value(true))
-        .arg(Arg::with_name("list_options")
-            .long("list_options")
+        .arg(Arg::with_name("list-options")
+            .long("list-options")
             .help("Dummy option needed for mps-youtube")
             .hidden(true))
         .subcommand(SubCommand::with_name("get")
@@ -143,7 +143,7 @@ fn main() {
                 .arg(Arg::with_name("mode")
                     .short("m")
                     .long("mode")
-                    .possible_values(&["replace", "append", "append-play"])
+                    .possible_values(&["replace", "append", "append-play", "mpsyt"])
                     .hide_possible_values(true)
                     .default_value("replace")
                     .help("<replace|append|append-play>\n\
@@ -183,6 +183,10 @@ fn main() {
 
     //Input socket is always present, therefore unwrap
     let socket = matches.value_of("socket").unwrap();
+
+    if matches.is_present("list-options") {
+        exit(0);
+    }
 
     if let Some(submatches) = matches.subcommand_matches("get") {
         if let Some(ssm) = submatches.subcommand_matches("property") {
