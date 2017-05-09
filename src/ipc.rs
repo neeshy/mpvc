@@ -21,7 +21,7 @@ pub struct PlaylistEntry {
 }
 
 pub trait PlaylistHandler {
-    fn get(socket: &str) -> Option<Playlist>;
+    fn get_from(socket: &str) -> Result<Playlist, String>;
     fn shuffle(&mut self) -> &mut Playlist;
     fn remove_id(&mut self, id: usize) -> &mut Playlist;
     fn move_entry(&mut self, from: usize, to: usize) -> &mut Playlist;
@@ -29,14 +29,15 @@ pub trait PlaylistHandler {
 }
 
 impl PlaylistHandler for Playlist {
-    fn get(socket: &str) -> Option<Playlist> {
-        if let Ok(playlist) = get_mpv_property(socket, "playlist") {
-            Some(Playlist {
-                     socket: socket.to_string(),
-                     entries: playlist,
-                 })
-        } else {
-            None
+    fn get_from(socket: &str) -> Result<Playlist, String> {
+        match get_mpv_property(socket, "playlist") {
+            Ok(playlist) => {
+                Ok(Playlist {
+                       socket: socket.to_string(),
+                       entries: playlist,
+                   })
+            }
+            Err(why) => Err(why),
         }
     }
 
