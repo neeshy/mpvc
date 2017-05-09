@@ -20,7 +20,7 @@ use ipc::*;
 fn main() {
 
     let matches = app_from_crate!()
-        //.setting(AppSettings::SubcommandRequiredElseHelp)
+        .setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(Arg::with_name("socket")
             .short("S")
             .long("socket")
@@ -143,7 +143,7 @@ fn main() {
                 .arg(Arg::with_name("mode")
                     .short("m")
                     .long("mode")
-                    .possible_values(&["replace", "append", "append-play", "mpsyt"])
+                    .possible_values(&["replace", "append", "append-play"])
                     .hide_possible_values(true)
                     .default_value("replace")
                     .help("<replace|append|append-play>\n\
@@ -334,12 +334,6 @@ fn main() {
         exit(0);
     }
 
-    if let Some(submatches) = matches.subcommand_matches("wait-for-event") {
-        let event = submatches.value_of("event").unwrap();
-        wait_for_event(socket, event);
-        exit(0);
-    }
-
     if let Some(submatches) = matches.subcommand_matches("playlist") {
         if let Some(ssm) = submatches.subcommand_matches("add") {
             let file = ssm.value_of("file").unwrap();
@@ -352,7 +346,7 @@ fn main() {
             if let Err(error_msg) = run_mpv_command(socket, "playlist-shuffle", &vec![]) {
                 error!("Error: {}", error_msg);
             }
-        } else if let Some(_) = matches.subcommand_matches("clear") {
+        } else if let Some(_) = submatches.subcommand_matches("clear") {
             if let Err(error_msg) = run_mpv_command(socket, "playlist-clear", &vec![]) {
                 error!("Error: {}", error_msg);
             }

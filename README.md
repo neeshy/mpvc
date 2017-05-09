@@ -43,7 +43,10 @@ mpvipc can be used with mpv-youtube. In order to use mpvipc with mpsyt you have 
 `
 set download_command mpvipc playlist add --mode=append-play https://youtu.be/%i#%f
 `
-
+Then use it as follows:
+`
+da 1-5
+`
 ## BUGS / IDEAS
 
 Check out the [Issue Tracker](https://github.com/freijon/mpvipc/issues)
