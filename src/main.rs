@@ -353,7 +353,7 @@ fn main() {
         } else if let Some(ssm) = submatches.subcommand_matches("remove-id") {
             if let Err(error_msg) = run_mpv_command(socket,
                                                     "playlist-remove",
-                                                    &vec![ssm.value_of("num").unwrap()]) {
+                                                    &vec![ssm.value_of("id").unwrap()]) {
                 error!("Error: {}", error_msg);
             }
         } else if let Some(ssm) = submatches.subcommand_matches("move-id") {
