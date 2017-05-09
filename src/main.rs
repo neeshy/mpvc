@@ -350,13 +350,13 @@ fn main() {
             if let Err(error_msg) = run_mpv_command(socket, "playlist-clear", &vec![]) {
                 error!("Error: {}", error_msg);
             }
-        } else if let Some(ssm) = submatches.subcommand_matches("remove") {
+        } else if let Some(ssm) = submatches.subcommand_matches("remove-id") {
             if let Err(error_msg) = run_mpv_command(socket,
                                                     "playlist-remove",
                                                     &vec![ssm.value_of("num").unwrap()]) {
                 error!("Error: {}", error_msg);
             }
-        } else if let Some(ssm) = submatches.subcommand_matches("move") {
+        } else if let Some(ssm) = submatches.subcommand_matches("move-id") {
             if let Err(error_msg) = run_mpv_command(socket,
                                                     "playlist-move",
                                                     &vec![ssm.value_of("from").unwrap(),
