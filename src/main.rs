@@ -187,41 +187,41 @@ fn main() {
         .get_matches();
 
     //Input socket is always present, therefore unwrap
-    let socket: Socket = matches.value_of("socket").unwrap().to_string();
+    let mpv: Socket = String::from(matches.value_of("socket").unwrap());
 
     match matches.subcommand() {
         ("pause", _) => {
-            if let Err(msg) = socket.pause() {
+            if let Err(msg) = mpv.pause() {
                 error!("Error: {}", msg);
             }
         }
 
         ("toggle", _) => {
-            if let Err(msg) = socket.toggle() {
+            if let Err(msg) = mpv.toggle() {
                 error!("Error: {}", msg);
             }
         }
 
         ("next", _) => {
-            if let Err(msg) = socket.next() {
+            if let Err(msg) = mpv.next() {
                 error!("Error: {}", msg);
             }
         }
 
         ("prev", _) => {
-            if let Err(msg) = socket.prev() {
+            if let Err(msg) = mpv.prev() {
                 error!("Error: {}", msg);
             }
         }
 
         ("restart", _) => {
-            if let Err(msg) = socket.restart() {
+            if let Err(msg) = mpv.restart() {
                 error!("Error: {}", msg);
             }
         }
 
         ("stop", _) => {
-            if let Err(msg) = socket.stop() {
+            if let Err(msg) = mpv.stop() {
                 error!("Error: {}", msg);
             }
         }
@@ -230,7 +230,7 @@ fn main() {
             match get_matches.subcommand() {
                 ("property", Some(property_matches)) => {
                     let property = property_matches.value_of("property").unwrap();
-                    match get_mpv_property_string(&socket, property) {
+                    match get_mpv_property_string(&mpv, property) {
                         Ok(value) => {
                             println!("{}", value);
                             exit(0);
@@ -240,7 +240,7 @@ fn main() {
                 }
 
                 ("metadata", _) => {
-                    match socket.get_metadata() {
+                    match mpv.get_metadata() {
                         Ok(metadata) => {
                             if metadata.len() == 0 {
                                 println!("File has no metadata");
@@ -263,7 +263,7 @@ fn main() {
                 ("property", Some(property_matches)) => {
                     let property = property_matches.value_of("property").unwrap();
                     let value = property_matches.value_of("value").unwrap();
-                    if let Err(error_msg) = set_mpv_property(&socket, property, value.to_string()) {
+                    if let Err(error_msg) = set_mpv_property(&mpv, property, value.to_string()) {
                         error!("Error: {}", error_msg);
                     }
                 }
@@ -272,20 +272,20 @@ fn main() {
                     let num = volume_matches.value_of("num").unwrap();
                     if volume_matches.is_present("increase") {
                         if let Err(msg) =
-                            socket.set_volume(num.parse::<f64>().unwrap(),
-                                              VolumeChangeOptions::Increase) {
+                            mpv.set_volume(num.parse::<f64>().unwrap(),
+                                           VolumeChangeOptions::Increase) {
                             error!("Error: {}", msg);
                         }
                     } else if volume_matches.is_present("decrease") {
                         if let Err(msg) =
-                            socket.set_volume(num.parse::<f64>().unwrap(),
-                                              VolumeChangeOptions::Decrease) {
+                            mpv.set_volume(num.parse::<f64>().unwrap(),
+                                           VolumeChangeOptions::Decrease) {
                             error!("Error: {}", msg);
                         }
                     } else {
                         if let Err(msg) =
-                            socket.set_volume(num.parse::<f64>().unwrap(),
-                                              VolumeChangeOptions::Absolute) {
+                            mpv.set_volume(num.parse::<f64>().unwrap(),
+                                           VolumeChangeOptions::Absolute) {
                             error!("Error: {}", msg);
                         }
                     }
@@ -303,18 +303,18 @@ fn main() {
             }
             let n = n;
             if seek_matches.is_present("absolute") {
-                if let Err(msg) = socket.seek(n, SeekOptions::Absolute) {
+                if let Err(msg) = mpv.seek(n, SeekOptions::Absolute) {
                     error!("Error: {}", msg);
                 }
             } else if seek_matches.is_present("absolute-percent") {
-                if let Err(msg) = socket.seek(n, SeekOptions::AbsolutePercent) {
+                if let Err(msg) = mpv.seek(n, SeekOptions::AbsolutePercent) {
                     error!("Error: {}", msg);
                 }
             } else if seek_matches.is_present("relative-percent") {
-                if let Err(msg) = socket.seek(n, SeekOptions::RelativePercent) {
+                if let Err(msg) = mpv.seek(n, SeekOptions::RelativePercent) {
                     error!("Error: {}", msg);
                 }
-            } else if let Err(msg) = socket.seek(n, SeekOptions::Relative) {
+            } else if let Err(msg) = mpv.seek(n, SeekOptions::Relative) {
                 error!("Error: {}", msg);
             }
         }
@@ -323,11 +323,11 @@ fn main() {
             match events_matches.subcommand() {
                 ("wait-for", Some(wait_for_matches)) => {
                     let event = wait_for_matches.value_of("event").unwrap();
-                    wait_for_event(&socket, event);
+                    wait_for_event(&mpv, event);
                 }
 
                 ("show", _) => {
-                    listen(&socket);
+                    listen(&mpv);
                 }
 
                 (_, _) => unreachable!(),
@@ -342,21 +342,21 @@ fn main() {
                         match add_matches.value_of("mode").unwrap() {
                             "replace" => {
                                 if let Err(msg) =
-                                    socket.playlist_add(file, PlaylistAddOptions::Replace) {
+                                    mpv.playlist_add(file, PlaylistAddOptions::Replace) {
                                     error!("Error: {}", msg);
                                 }
                             }
 
                             "append" => {
                                 if let Err(msg) =
-                                    socket.playlist_add(file, PlaylistAddOptions::Append) {
+                                    mpv.playlist_add(file, PlaylistAddOptions::Append) {
                                     error!("Error: {}", msg);
                                 }
                             }
 
                             "append-play" => {
                                 if let Err(msg) =
-                                    socket.playlist_add(file, PlaylistAddOptions::AppendPlay) {
+                                    mpv.playlist_add(file, PlaylistAddOptions::AppendPlay) {
                                     error!("Error: {}", msg);
                                 }
                             }
@@ -367,55 +367,55 @@ fn main() {
                 }
 
                 ("shuffle", _) => {
-                    if let Err(msg) = socket.playlist_shuffle() {
+                    if let Err(msg) = mpv.playlist_shuffle() {
                         error!("Error: {}", msg);
                     }
                 }
 
                 ("clear", _) => {
-                    if let Err(msg) = socket.playlist_clear() {
+                    if let Err(msg) = mpv.playlist_clear() {
                         error!("Error: {}", msg);
                     }
                 }
 
                 ("remove-id", Some(remove_id_matches)) => {
-                    if let Err(msg) = socket.playlist_remove_id(remove_id_matches
-                                                                    .value_of("id")
-                                                                    .unwrap()
-                                                                    .parse::<usize>()
-                                                                    .unwrap()) {
+                    if let Err(msg) = mpv.playlist_remove_id(remove_id_matches
+                                                                 .value_of("id")
+                                                                 .unwrap()
+                                                                 .parse::<usize>()
+                                                                 .unwrap()) {
                         error!("Error: {}", msg);
                     }
                 }
 
                 ("move-id", Some(remove_id_matches)) => {
-                    if let Err(msg) = socket.playlist_move_id(remove_id_matches
-                                                                  .value_of("from")
-                                                                  .unwrap()
-                                                                  .parse::<usize>()
-                                                                  .unwrap(),
-                                                              remove_id_matches
-                                                                  .value_of("to")
-                                                                  .unwrap()
-                                                                  .parse::<usize>()
-                                                                  .unwrap()) {
+                    if let Err(msg) = mpv.playlist_move_id(remove_id_matches
+                                                               .value_of("from")
+                                                               .unwrap()
+                                                               .parse::<usize>()
+                                                               .unwrap(),
+                                                           remove_id_matches
+                                                               .value_of("to")
+                                                               .unwrap()
+                                                               .parse::<usize>()
+                                                               .unwrap()) {
                         error!("Error: {}", msg);
                     }
                 }
 
                 ("play-next", Some(play_next_matches)) => {
-                    if let Err(msg) = socket.playlist_play_next(play_next_matches
-                                                                    .value_of("id")
-                                                                    .unwrap()
-                                                                    .parse::<usize>()
-                                                                    .unwrap()) {
+                    if let Err(msg) = mpv.playlist_play_next(play_next_matches
+                                                                 .value_of("id")
+                                                                 .unwrap()
+                                                                 .parse::<usize>()
+                                                                 .unwrap()) {
                         error!("Error: {}", msg);
                     }
                 }
 
                 ("show", _) => {
                     //Show the playlist
-                    if let Ok(playlist) = socket.get_playlist() {
+                    if let Ok(playlist) = mpv.get_playlist() {
                         for entry in playlist.entries.iter() {
                             if &entry.title == "" {
                                 let mut output = format!("{}\t{}", entry.id + 1, entry.filename);
