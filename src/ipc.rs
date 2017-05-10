@@ -7,10 +7,7 @@ use std::iter::Iterator;
 use std::collections::HashMap;
 use serde_json::{self, Value};
 
-pub struct Playlist {
-    pub socket: String,
-    pub entries: Vec<PlaylistEntry>,
-}
+pub type Socket = String;
 
 #[derive(Debug)]
 pub struct PlaylistEntry {
@@ -18,87 +15,6 @@ pub struct PlaylistEntry {
     pub filename: String,
     pub title: String,
     pub current: bool,
-}
-
-pub trait PlaylistHandler {
-    fn get_from(socket: &str) -> Result<Playlist, String>;
-    fn shuffle(&mut self) -> &mut Playlist;
-    fn remove_id(&mut self, id: usize) -> &mut Playlist;
-    fn move_entry(&mut self, from: usize, to: usize) -> &mut Playlist;
-    fn current_id(&self) -> Option<usize>;
-}
-
-impl PlaylistHandler for Playlist {
-    fn get_from(socket: &str) -> Result<Playlist, String> {
-        match get_mpv_property(socket, "playlist") {
-            Ok(playlist) => {
-                Ok(Playlist {
-                       socket: socket.to_string(),
-                       entries: playlist,
-                   })
-            }
-            Err(why) => Err(why),
-        }
-    }
-
-    fn shuffle(&mut self) -> &mut Playlist {
-        if let Err(error_msg) = run_mpv_command(&self.socket, "playlist-shuffle", &vec![]) {
-            error!("Error: {}", error_msg);
-        }
-        if let Ok(mut playlist_entries) =
-            get_mpv_property::<Vec<PlaylistEntry>>(&self.socket, "playlist") {
-            if self.entries.len() == playlist_entries.len() {
-                for (i, entry) in playlist_entries.drain(0..).enumerate() {
-                    self.entries[i] = entry;
-                }
-            }
-        }
-        self
-    }
-
-    fn remove_id(&mut self, id: usize) -> &mut Playlist {
-        self.entries.remove(id);
-        if let Err(error_msg) = run_mpv_command(&self.socket,
-                                                "playlist-remove",
-                                                &vec![&id.to_string()]) {
-            error!("Error: {}", error_msg);
-        }
-        self
-    }
-
-    fn move_entry(&mut self, from: usize, to: usize) -> &mut Playlist {
-        if from != to {
-            if let Err(error_msg) = run_mpv_command(&self.socket,
-                                                    "playlist-move",
-                                                    &vec![&from.to_string(), &to.to_string()]) {
-                error!("Error: {}", error_msg);
-            }
-            if from < to {
-                self.entries[from].id = to - 1;
-                self.entries[to].id = to - 2;
-                for i in from..to - 2 {
-                    self.entries[i + 1].id = i;
-                }
-                self.entries.sort_by_key(|entry| entry.id);
-            } else if from > to {
-                self.entries[from].id = to;
-                for i in to..from - 1 {
-                    self.entries[i].id = i + 1;
-                }
-                self.entries.sort_by_key(|entry| entry.id);
-            }
-        }
-        self
-    }
-
-    fn current_id(&self) -> Option<usize> {
-        for entry in self.entries.iter() {
-            if entry.current {
-                return Some(entry.id);
-            }
-        }
-        None
-    }
 }
 
 pub trait TypeHandler: Sized {
@@ -199,7 +115,7 @@ impl TypeHandler for HashMap<String, String> {
                                 output_map.insert(key.to_string(), val.to_string());
                             }
                         }
-                        output_map = output_map;
+                        let output_map = output_map;
                         Ok(output_map)
                     } else {
                         Err("Value did not contain a HashMap".to_string())
@@ -247,7 +163,7 @@ impl TypeHandler for Vec<PlaylistEntry> {
                                             current: current,
                                         });
                         }
-                        output = output;
+                        let output = output;
                         Ok(output)
                     } else {
                         Err("Value did not contain a playlist".to_string())
@@ -392,39 +308,6 @@ pub fn wait_for_event(socket: &str, event: &str) {
         Err(why) => error!("Error: Could not connect to socket: {}", why.description()),
     }
 }
-
-// fn send_command_sync_socat(socket: &str, command: &str) -> String {
-//     // Spawn the `socat` command
-//     let process = match Command::new("socat")
-//               .arg("-")
-//               .arg(socket)
-//               .stdin(Stdio::piped())
-//               .stdout(Stdio::piped())
-//               .spawn() {
-//         Err(why) => panic!("couldn't spawn socat: {}", why.description()),
-//         Ok(process) => process,
-//     };
-
-//     // `stdin` has type `Option<ChildStdin>`, but since we know this instance
-//     // must have one, we can directly `unwrap` it.
-//     match process.stdin.unwrap().write_all(command.as_bytes()) {
-//         Err(why) => panic!("couldn't write to socat stdin: {}", why.description()),
-//         Ok(result) => result,
-//     }
-
-//     // Because `stdin` does not live after the above calls, it is `drop`ed,
-//     // and the pipe is closed.
-//     //
-//     // This is very important, otherwise `socat` wouldn't start processing the
-//     // input we just sent.
-
-//     // The `stdout` field also has type `Option<ChildStdout>` so must be unwrapped.
-//     let mut s = String::new();
-//     match process.stdout.unwrap().read_to_string(&mut s) {
-//         Err(why) => panic!("couldn't read socat stdout: {}", why.description()),
-//         Ok(_) => return s,
-//     }
-// }
 
 fn send_command_sync(socket: &str, command: &str) -> String {
     match UnixStream::connect(socket) {

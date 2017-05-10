@@ -8,14 +8,15 @@ extern crate colored;
 #[macro_use]
 mod macros;
 mod ipc;
+mod commands;
 
 use std::process::exit;
-use std::collections::HashMap;
 
 use clap::{AppSettings, Arg, SubCommand};
 use colored::*;
 
 use ipc::*;
+use commands::*;
 
 fn main() {
 
@@ -74,7 +75,8 @@ fn main() {
                     .short("d")
                     .long("decrease")
                     .help("If set will decrease volume by <num>")
-                    .takes_value(false))))
+                    .takes_value(false)
+                    .conflicts_with("increase"))))
         .subcommand(SubCommand::with_name("pause")
             .about("Pauses playing"))
         .subcommand(SubCommand::with_name("toggle")
@@ -104,15 +106,18 @@ fn main() {
                 .short("a")
                 .long("absolute")
                 .help("Seek to a given time (a value with -n starts from the end of the file).")
-                .takes_value(false))
+                .takes_value(false)
+                .conflicts_with_all(&["relative", "absolute-percent", "relative-percent"]))
             .arg(Arg::with_name("absolute-percent")
                 .long("absolute-percent")
                 .help("Seek to a given percent position.")
-                .takes_value(false))
+                .takes_value(false)
+                .conflicts_with_all(&["relative", "absolute", "relative-percent"]))
             .arg(Arg::with_name("relative-percent")
                 .long("relative-percent")
                 .help("Seek relative to current position in percent.")
-                .takes_value(false))
+                .takes_value(false)
+                .conflicts_with_all(&["relative", "absolute", "absolute-percent"]))
             .arg(Arg::with_name("negative")
                 .short("n")
                 .long("negative")
@@ -182,223 +187,257 @@ fn main() {
         .get_matches();
 
     //Input socket is always present, therefore unwrap
-    let socket = matches.value_of("socket").unwrap();
+    let socket: Socket = matches.value_of("socket").unwrap().to_string();
 
-    if matches.is_present("list-options") {
-        exit(0);
-    }
-
-    if let Some(submatches) = matches.subcommand_matches("get") {
-        if let Some(ssm) = submatches.subcommand_matches("property") {
-            let property = ssm.value_of("property").unwrap();
-            match get_mpv_property_string(socket, property) {
-                Ok(value) => {
-                    println!("{}", value);
-                    exit(0);
-                }
-                Err(msg) => error!("Error: {}", msg),
+    match matches.subcommand() {
+        ("pause", _) => {
+            if let Err(msg) = socket.pause() {
+                error!("Error: {}", msg);
             }
-        } else if let Some(_) = submatches.subcommand_matches("metadata") {
-            let metadata: HashMap<String, String> = get_mpv_property(socket, "metadata").unwrap();
-            for (key, value) in metadata.iter() {
-                println!("{}: {}", key, value);
-            }
-
         }
-        exit(0);
-    }
 
-    if let Some(submatches) = matches.subcommand_matches("set") {
-        if let Some(ssm) = submatches.subcommand_matches("property") {
-            let property = ssm.value_of("property").unwrap();
-            let value = ssm.value_of("value").unwrap();
-            if let Err(error_msg) = set_mpv_property(socket, property, value.to_string()) {
-                error!("Error: {}", error_msg);
+        ("toggle", _) => {
+            if let Err(msg) = socket.toggle() {
+                error!("Error: {}", msg);
             }
-        } else if let Some(ssm) = submatches.subcommand_matches("volume") {
-            let num = ssm.value_of("num").unwrap();
-            if ssm.is_present("increase") || ssm.is_present("decrease") {
-                match get_mpv_property::<f64>(socket, "volume") {
-                    Ok(volume) => {
-                        if ssm.is_present("increase") {
-                            if let Err(error_msg) = set_mpv_property(socket,
-                                                                     "volume",
-                                                                     volume +
-                                                                     num.parse::<f64>().unwrap()) {
-                                error!("Error: {}", error_msg);
-                            }
-                        } else {
-                            if let Err(error_msg) = set_mpv_property(socket,
-                                                                     "volume",
-                                                                     volume -
-                                                                     num.parse::<f64>().unwrap()) {
-                                error!("Error: {}", error_msg);
-                            }
+        }
+
+        ("next", _) => {
+            if let Err(msg) = socket.next() {
+                error!("Error: {}", msg);
+            }
+        }
+
+        ("prev", _) => {
+            if let Err(msg) = socket.prev() {
+                error!("Error: {}", msg);
+            }
+        }
+
+        ("restart", _) => {
+            if let Err(msg) = socket.restart() {
+                error!("Error: {}", msg);
+            }
+        }
+
+        ("stop", _) => {
+            if let Err(msg) = socket.stop() {
+                error!("Error: {}", msg);
+            }
+        }
+
+        ("get", Some(get_matches)) => {
+            match get_matches.subcommand() {
+                ("property", Some(property_matches)) => {
+                    let property = property_matches.value_of("property").unwrap();
+                    match get_mpv_property_string(&socket, property) {
+                        Ok(value) => {
+                            println!("{}", value);
+                            exit(0);
                         }
-                    }
-                    Err(msg) => error!("Error: {}", msg),
-                }
-            } else {
-                if let Err(error_msg) = set_mpv_property(socket, "volume", num.to_string()) {
-                    error!("Error: {}", error_msg);
-                }
-            }
-        }
-        exit(0);
-    }
-
-    if let Some(_) = matches.subcommand_matches("pause") {
-        if let Err(error_msg) = set_mpv_property(socket, "pause", true) {
-            error!("Error: {}", error_msg);
-        }
-    }
-
-    if let Some(_) = matches.subcommand_matches("toggle") {
-        match get_mpv_property::<bool>(socket, "pause") {
-            Ok(paused) => {
-                if let Err(error_msg) = set_mpv_property(socket, "pause", !paused) {
-                    error!("Error: {}", error_msg);
-                }
-            }
-            Err(msg) => error!("Error: {}", msg),
-        }
-        exit(0);
-    }
-
-    if let Some(_) = matches.subcommand_matches("next") {
-        if let Err(error_msg) = run_mpv_command(socket, "playlist-next", &vec![]) {
-            error!("Error: {}", error_msg);
-        }
-        exit(0);
-    }
-
-    if let Some(_) = matches.subcommand_matches("prev") {
-        if let Err(error_msg) = run_mpv_command(socket, "playlist-prev", &vec![]) {
-            error!("Error: {}", error_msg);
-        }
-        exit(0);
-    }
-
-    if let Some(_) = matches.subcommand_matches("restart") {
-        if let Err(error_msg) = run_mpv_command(socket, "seek", &vec!["0", "absolute"]) {
-            error!("Error: {}", error_msg);
-        }
-        exit(0);
-    }
-
-    if let Some(submatches) = matches.subcommand_matches("seek") {
-        let num = submatches.value_of("num").unwrap();
-        let mut n = num.to_string();
-        if submatches.is_present("negative") {
-            n = format!("-{}", num);
-        }
-        n = n;
-        if submatches.is_present("absolute") {
-            if let Err(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "absolute"]) {
-                error!("Error: {}", error_msg);
-            }
-            exit(0);
-        }
-        if submatches.is_present("absolute-percent") {
-            if let Err(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "absolute-percent"]) {
-                error!("Error: {}", error_msg);
-            }
-            exit(0);
-        }
-        if submatches.is_present("relative-percent") {
-            if let Err(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "relative-percent"]) {
-                error!("Error: {}", error_msg);
-            }
-            exit(0);
-        }
-        if let Err(error_msg) = run_mpv_command(socket, "seek", &vec![&n, "relative"]) {
-            error!("Error: {}", error_msg);
-        }
-        exit(0);
-    }
-
-    if let Some(submatches) = matches.subcommand_matches("events") {
-        if let Some(ssm) = submatches.subcommand_matches("wait-for") {
-            let event = ssm.value_of("event").unwrap();
-            wait_for_event(socket, event);
-        } else if let Some(_) = submatches.subcommand_matches("show") {
-            listen(socket);
-        }
-        exit(0);
-    }
-
-    if let Some(_) = matches.subcommand_matches("stop") {
-        if let Err(error_msg) = run_mpv_command(socket, "stop", &vec![]) {
-            error!("Error: {}", error_msg);
-        }
-        exit(0);
-    }
-
-    if let Some(submatches) = matches.subcommand_matches("playlist") {
-        if let Some(ssm) = submatches.subcommand_matches("add") {
-            let file = ssm.value_of("file").unwrap();
-            if let Err(error_msg) = run_mpv_command(socket,
-                                                    "loadfile",
-                                                    &vec![file, ssm.value_of("mode").unwrap()]) {
-                error!("Error: {}", error_msg);
-            }
-        } else if let Some(_) = submatches.subcommand_matches("shuffle") {
-            if let Err(error_msg) = run_mpv_command(socket, "playlist-shuffle", &vec![]) {
-                error!("Error: {}", error_msg);
-            }
-        } else if let Some(_) = submatches.subcommand_matches("clear") {
-            if let Err(error_msg) = run_mpv_command(socket, "playlist-clear", &vec![]) {
-                error!("Error: {}", error_msg);
-            }
-        } else if let Some(ssm) = submatches.subcommand_matches("remove-id") {
-            if let Err(error_msg) = run_mpv_command(socket,
-                                                    "playlist-remove",
-                                                    &vec![ssm.value_of("id").unwrap()]) {
-                error!("Error: {}", error_msg);
-            }
-        } else if let Some(ssm) = submatches.subcommand_matches("move-id") {
-            if let Err(error_msg) = run_mpv_command(socket,
-                                                    "playlist-move",
-                                                    &vec![ssm.value_of("from").unwrap(),
-                                                          ssm.value_of("to").unwrap()]) {
-                error!("Error: {}", error_msg);
-            }
-        } else if let Some(ssm) = submatches.subcommand_matches("play-next") {
-            match Playlist::get_from(socket) {
-                Ok(playlist) => {
-                    if let Some(current_id) = playlist.current_id() {
-                        if let Err(error_msg) = run_mpv_command(socket,
-                                                                "playlist-move",
-                                                                &vec![ssm.value_of("id")
-                                                                          .unwrap(),
-                                                                      &format!("{}",
-                                                                               current_id + 1)]) {
-                            error!("Error: {}", error_msg);
-                        }
+                        Err(msg) => error!("Error: {}", msg),
                     }
                 }
-                Err(why) => error!("Error: Could not set play-next: {}", why),
-            }
-        } else if let Some(_) = submatches.subcommand_matches("show") {
-            //Show the playlist
-            if let Ok(playlist) = Playlist::get_from(socket) {
-                for entry in playlist.entries.iter() {
-                    if &entry.title == "" {
-                        let mut output = format!("{}\t{}", entry.id + 1, entry.filename);
-                        if entry.current {
-                            output = format!("{}", output.reverse());
+
+                ("metadata", _) => {
+                    match socket.get_metadata() {
+                        Ok(metadata) => {
+                            if metadata.len() == 0 {
+                                println!("File has no metadata");
+                            } else {
+                                for (key, value) in metadata.iter() {
+                                    println!("{}: {}", key, value);
+                                }
+                            }
                         }
-                        println!("{}", output);
+                        Err(why) => error!("Error: {}", why),
+                    }
+                }
+
+                (_, _) => unreachable!(),
+            }
+        }
+
+        ("set", Some(set_matches)) => {
+            match set_matches.subcommand() {
+                ("property", Some(property_matches)) => {
+                    let property = property_matches.value_of("property").unwrap();
+                    let value = property_matches.value_of("value").unwrap();
+                    if let Err(error_msg) = set_mpv_property(&socket, property, value.to_string()) {
+                        error!("Error: {}", error_msg);
+                    }
+                }
+
+                ("volume", Some(volume_matches)) => {
+                    let num = volume_matches.value_of("num").unwrap();
+                    if volume_matches.is_present("increase") {
+                        if let Err(msg) =
+                            socket.set_volume(num.parse::<f64>().unwrap(),
+                                              VolumeChangeOptions::Increase) {
+                            error!("Error: {}", msg);
+                        }
+                    } else if volume_matches.is_present("decrease") {
+                        if let Err(msg) =
+                            socket.set_volume(num.parse::<f64>().unwrap(),
+                                              VolumeChangeOptions::Decrease) {
+                            error!("Error: {}", msg);
+                        }
                     } else {
-                        let mut output = format!("{}\t{}", entry.id + 1, entry.title);
-                        if entry.current {
-                            output = format!("{}", output.reverse());
+                        if let Err(msg) =
+                            socket.set_volume(num.parse::<f64>().unwrap(),
+                                              VolumeChangeOptions::Absolute) {
+                            error!("Error: {}", msg);
                         }
-                        println!("{}", output);
                     }
                 }
+
+                (_, _) => unreachable!(),
             }
         }
-        exit(0);
+
+        ("seek", Some(seek_matches)) => {
+            let num = seek_matches.value_of("num").unwrap();
+            let mut n: f64 = num.parse().expect("Parse f64");
+            if seek_matches.is_present("negative") {
+                n = n * -1.0f64;
+            }
+            let n = n;
+            if seek_matches.is_present("absolute") {
+                if let Err(msg) = socket.seek(n, SeekOptions::Absolute) {
+                    error!("Error: {}", msg);
+                }
+            } else if seek_matches.is_present("absolute-percent") {
+                if let Err(msg) = socket.seek(n, SeekOptions::AbsolutePercent) {
+                    error!("Error: {}", msg);
+                }
+            } else if seek_matches.is_present("relative-percent") {
+                if let Err(msg) = socket.seek(n, SeekOptions::RelativePercent) {
+                    error!("Error: {}", msg);
+                }
+            } else if let Err(msg) = socket.seek(n, SeekOptions::Relative) {
+                error!("Error: {}", msg);
+            }
+        }
+
+        ("events", Some(events_matches)) => {
+            match events_matches.subcommand() {
+                ("wait-for", Some(wait_for_matches)) => {
+                    let event = wait_for_matches.value_of("event").unwrap();
+                    wait_for_event(&socket, event);
+                }
+
+                ("show", _) => {
+                    listen(&socket);
+                }
+
+                (_, _) => unreachable!(),
+            }
+        }
+
+        ("playlist", Some(playlist_matches)) => {
+            match playlist_matches.subcommand() {
+                ("add", Some(add_matches)) => {
+                    let file = add_matches.value_of("file").unwrap();
+                    if add_matches.is_present("mode") {
+                        match add_matches.value_of("mode").unwrap() {
+                            "replace" => {
+                                if let Err(msg) =
+                                    socket.playlist_add(file, PlaylistAddOptions::Replace) {
+                                    error!("Error: {}", msg);
+                                }
+                            }
+
+                            "append" => {
+                                if let Err(msg) =
+                                    socket.playlist_add(file, PlaylistAddOptions::Append) {
+                                    error!("Error: {}", msg);
+                                }
+                            }
+
+                            "append-play" => {
+                                if let Err(msg) =
+                                    socket.playlist_add(file, PlaylistAddOptions::AppendPlay) {
+                                    error!("Error: {}", msg);
+                                }
+                            }
+
+                            _ => unreachable!(),
+                        }
+                    }
+                }
+
+                ("shuffle", _) => {
+                    if let Err(msg) = socket.playlist_shuffle() {
+                        error!("Error: {}", msg);
+                    }
+                }
+
+                ("clear", _) => {
+                    if let Err(msg) = socket.playlist_clear() {
+                        error!("Error: {}", msg);
+                    }
+                }
+
+                ("remove-id", Some(remove_id_matches)) => {
+                    if let Err(msg) = socket.playlist_remove_id(remove_id_matches
+                                                                    .value_of("id")
+                                                                    .unwrap()
+                                                                    .parse::<usize>()
+                                                                    .unwrap()) {
+                        error!("Error: {}", msg);
+                    }
+                }
+
+                ("move-id", Some(remove_id_matches)) => {
+                    if let Err(msg) = socket.playlist_move_id(remove_id_matches
+                                                                  .value_of("from")
+                                                                  .unwrap()
+                                                                  .parse::<usize>()
+                                                                  .unwrap(),
+                                                              remove_id_matches
+                                                                  .value_of("to")
+                                                                  .unwrap()
+                                                                  .parse::<usize>()
+                                                                  .unwrap()) {
+                        error!("Error: {}", msg);
+                    }
+                }
+
+                ("play-next", Some(play_next_matches)) => {
+                    if let Err(msg) = socket.playlist_play_next(play_next_matches
+                                                                    .value_of("id")
+                                                                    .unwrap()
+                                                                    .parse::<usize>()
+                                                                    .unwrap()) {
+                        error!("Error: {}", msg);
+                    }
+                }
+
+                ("show", _) => {
+                    //Show the playlist
+                    if let Ok(playlist) = socket.get_playlist() {
+                        for entry in playlist.entries.iter() {
+                            if &entry.title == "" {
+                                let mut output = format!("{}\t{}", entry.id + 1, entry.filename);
+                                if entry.current {
+                                    output = format!("{}", output.reverse());
+                                }
+                                println!("{}", output);
+                            } else {
+                                let mut output = format!("{}\t{}", entry.id + 1, entry.title);
+                                if entry.current {
+                                    output = format!("{}", output.reverse());
+                                }
+                                println!("{}", output);
+                            }
+                        }
+                    }
+                }
+
+                (_, _) => unreachable!(),
+            }
+        }
+
+        (_, _) => unreachable!(),
     }
 }
