@@ -103,6 +103,32 @@ impl TypeHandler for f64 {
     }
 }
 
+impl TypeHandler for usize {
+    fn get_value(value: Value) -> Result<usize, String> {
+        if let Value::Object(map) = value {
+            if let Value::String(ref error) = map["error"] {
+                if error == "success" && map.contains_key("data") {
+                    if let Value::Number(ref num) = map["data"] {
+                        Ok(num.as_u64().unwrap() as usize)
+                    } else {
+                        Err("Value did not contain an usize".to_string())
+                    }
+                } else {
+                    Err(error.to_string())
+                }
+            } else {
+                Err("Unexpected value received".to_string())
+            }
+        } else {
+            Err("Unexpected value received".to_string())
+        }
+    }
+
+    fn as_string(&self) -> String {
+        self.to_string()
+    }
+}
+
 impl TypeHandler for HashMap<String, String> {
     fn get_value(value: Value) -> Result<HashMap<String, String>, String> {
         if let Value::Object(map) = value {

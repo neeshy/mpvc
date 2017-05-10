@@ -64,17 +64,17 @@ fn main() {
                 Sets the volume to <NUM> (0-100). \
                 Use with --increase or --decrease to relatively change the volume")
                 .arg(Arg::with_name("num")
-                    .value_name("num")
+                    .value_name("NUM")
                     .required(true))
                 .arg(Arg::with_name("increase")
                     .short("i")
                     .long("increase")
-                    .help("If set will increase volume by <num>")
+                    .help("If set will increase volume by <NUM>")
                     .takes_value(false))
                 .arg(Arg::with_name("decrease")
                     .short("d")
                     .long("decrease")
-                    .help("If set will decrease volume by <num>")
+                    .help("If set will decrease volume by <NUM>")
                     .takes_value(false)
                     .conflicts_with("increase"))))
         .subcommand(SubCommand::with_name("pause")
@@ -121,7 +121,7 @@ fn main() {
             .arg(Arg::with_name("negative")
                 .short("n")
                 .long("negative")
-                .help("Use with negative values of <num>")
+                .help("Use with negative values of <NUM>")
                 .takes_value(false)))
         .subcommand(SubCommand::with_name("events")
             .about("Event related commands. See --help for available subcommands.")
@@ -164,12 +164,14 @@ fn main() {
                 .about("Shuffles the playlist"))
             .subcommand(SubCommand::with_name("remove-id")
                 .about("Removes <ID> from the 0-based playlist. If <ID> is currently playing, playback will stop")
+                .alias("remove")
                 .arg(Arg::with_name("id")
                     .value_name("ID")
                     .help("Defines the id that should be removed from the 0-based playlist")
                     .required(true)))
             .subcommand(SubCommand::with_name("move-id")
                 .about("Moves the playlist entry at position <FROM> to position <TO>")
+                .alias("move")
                 .arg(Arg::with_name("from")
                     .value_name("FROM-ID")
                     .help("Defines the id that should be moved to position <TO>")
@@ -180,6 +182,14 @@ fn main() {
                     .required(true)))
             .subcommand(SubCommand::with_name("play-next")
                 .about("Moves the playlist entry at position <ID> after the currently playing ID")
+                .alias("next")
+                .arg(Arg::with_name("id")
+                    .value_name("ID")
+                    .help("Defines the id that should be played next")
+                    .required(true)))
+            .subcommand(SubCommand::with_name("play-id")
+                .about("Plays the file at <ID> in the playlist")
+                .alias("play")
                 .arg(Arg::with_name("id")
                     .value_name("ID")
                     .help("Defines the id that should be played next")
@@ -388,13 +398,13 @@ fn main() {
                     }
                 }
 
-                ("move-id", Some(remove_id_matches)) => {
-                    if let Err(msg) = mpv.playlist_move_id(remove_id_matches
+                ("move-id", Some(move_id_matches)) => {
+                    if let Err(msg) = mpv.playlist_move_id(move_id_matches
                                                                .value_of("from")
                                                                .unwrap()
                                                                .parse::<usize>()
                                                                .unwrap(),
-                                                           remove_id_matches
+                                                           move_id_matches
                                                                .value_of("to")
                                                                .unwrap()
                                                                .parse::<usize>()
@@ -413,18 +423,28 @@ fn main() {
                     }
                 }
 
+                ("play-id", Some(play_id_matches)) => {
+                    if let Err(msg) = mpv.playlist_play_id(play_id_matches
+                                                               .value_of("id")
+                                                               .unwrap()
+                                                               .parse::<usize>()
+                                                               .unwrap()) {
+                        error!("Error: {}", msg);
+                    }
+                }
+
                 ("show", _) => {
                     //Show the playlist
                     if let Ok(playlist) = mpv.get_playlist() {
                         for entry in playlist.entries.iter() {
                             if &entry.title == "" {
-                                let mut output = format!("{}\t{}", entry.id + 1, entry.filename);
+                                let mut output = format!("{}\t{}", entry.id, entry.filename);
                                 if entry.current {
                                     output = format!("{}", output.reverse());
                                 }
                                 println!("{}", output);
                             } else {
-                                let mut output = format!("{}\t{}", entry.id + 1, entry.title);
+                                let mut output = format!("{}\t{}", entry.id, entry.title);
                                 if entry.current {
                                     output = format!("{}", output.reverse());
                                 }

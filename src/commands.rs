@@ -123,6 +123,7 @@ pub trait Commands {
     fn playlist_remove_id(&self, id: usize) -> Result<(), String>;
     fn playlist_move_id(&self, from: usize, to: usize) -> Result<(), String>;
     fn playlist_play_next(&self, id: usize) -> Result<(), String>;
+    fn playlist_play_id(&self, id: usize) -> Result<(), String>;
     fn get_playlist(&self) -> Result<Playlist, String>;
 }
 
@@ -244,6 +245,10 @@ impl Commands for Socket {
             }
             Err(why) => Err(why),
         }
+    }
+
+    fn playlist_play_id(&self, id: usize) -> Result<(), String> {
+        set_mpv_property(self, "playlist-pos", id)
     }
 
     fn get_playlist(&self) -> Result<Playlist, String> {
