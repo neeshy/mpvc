@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ipc::*;
 
-pub enum VolumeChangeOptions {
+pub enum NumberChangeOptions {
     Absolute,
     Increase,
     Decrease,
@@ -19,6 +19,12 @@ pub enum PlaylistAddOptions {
     Replace,
     Append,
     AppendPlay,
+}
+
+pub enum Switch {
+    On,
+    Off,
+    Toggle,
 }
 
 pub struct Playlist {
@@ -108,39 +114,52 @@ impl PlaylistHandler for Playlist {
 }
 
 pub trait Commands {
-    fn pause(&self) -> Result<(), String>;
-    fn toggle(&self) -> Result<(), String>;
+    fn get_metadata(&self) -> Result<HashMap<String, String>, String>;
+    fn get_playlist(&self) -> Result<Playlist, String>;
+    fn kill(&self) -> Result<(), String>;
     fn next(&self) -> Result<(), String>;
+    fn pause(&self) -> Result<(), String>;
+    fn playlist_add(&self, file: &str, option: PlaylistAddOptions) -> Result<(), String>;
+    fn playlist_clear(&self) -> Result<(), String>;
+    fn playlist_move_id(&self, from: usize, to: usize) -> Result<(), String>;
+    fn playlist_play_id(&self, id: usize) -> Result<(), String>;
+    fn playlist_play_next(&self, id: usize) -> Result<(), String>;
+    fn playlist_shuffle(&self) -> Result<(), String>;
+    fn playlist_remove_id(&self, id: usize) -> Result<(), String>;
     fn prev(&self) -> Result<(), String>;
     fn restart(&self) -> Result<(), String>;
-    fn stop(&self) -> Result<(), String>;
-    fn get_metadata(&self) -> Result<HashMap<String, String>, String>;
-    fn set_volume(&self, input_volume: f64, option: VolumeChangeOptions) -> Result<(), String>;
     fn seek(&self, seconds: f64, option: SeekOptions) -> Result<(), String>;
-    fn playlist_add(&self, file: &str, option: PlaylistAddOptions) -> Result<(), String>;
-    fn playlist_shuffle(&self) -> Result<(), String>;
-    fn playlist_clear(&self) -> Result<(), String>;
-    fn playlist_remove_id(&self, id: usize) -> Result<(), String>;
-    fn playlist_move_id(&self, from: usize, to: usize) -> Result<(), String>;
-    fn playlist_play_next(&self, id: usize) -> Result<(), String>;
-    fn playlist_play_id(&self, id: usize) -> Result<(), String>;
-    fn get_playlist(&self) -> Result<Playlist, String>;
+    fn set_loop_file(&self, option: Switch) -> Result<(), String>;
+    fn set_loop_playlist(&self, option: Switch) -> Result<(), String>;
+    fn set_mute(&self, option: Switch) -> Result<(), String>;
+    fn set_speed(&self, input_volume: f64, option: NumberChangeOptions) -> Result<(), String>;
+    fn set_volume(&self, input_volume: f64, option: NumberChangeOptions) -> Result<(), String>;
+    fn stop(&self) -> Result<(), String>;
+    fn toggle(&self) -> Result<(), String>;
 }
 
 impl Commands for Socket {
-    fn pause(&self) -> Result<(), String> {
-        set_mpv_property(self, "pause", true)
+    fn get_metadata(&self) -> Result<HashMap<String, String>, String> {
+        match get_mpv_property(self, "metadata") {
+            Ok(map) => Ok(map),
+            Err(err) => Err(err),
+        }
     }
 
-    fn toggle(&self) -> Result<(), String> {
-        match get_mpv_property::<bool>(self, "pause") {
-            Ok(paused) => set_mpv_property(self, "pause", !paused),
-            Err(msg) => Err(msg),
-        }
+    fn get_playlist(&self) -> Result<Playlist, String> {
+        Playlist::get_from(self.to_string())
+    }
+
+    fn kill(&self) -> Result<(), String> {
+        run_mpv_command(self, "quit", &vec![])
     }
 
     fn next(&self) -> Result<(), String> {
         run_mpv_command(self, "playlist-next", &vec![])
+    }
+
+    fn pause(&self) -> Result<(), String> {
+        set_mpv_property(self, "pause", true)
     }
 
     fn prev(&self) -> Result<(), String> {
@@ -155,28 +174,9 @@ impl Commands for Socket {
         run_mpv_command(self, "stop", &vec![])
     }
 
-    fn get_metadata(&self) -> Result<HashMap<String, String>, String> {
-        match get_mpv_property(self, "metadata") {
-            Ok(map) => Ok(map),
-            Err(err) => Err(err),
-        }
-    }
-
-    fn set_volume(&self, input_volume: f64, option: VolumeChangeOptions) -> Result<(), String> {
-        match get_mpv_property::<f64>(self, "volume") {
-            Ok(volume) => {
-                match option {
-                    VolumeChangeOptions::Increase => {
-                        set_mpv_property(self, "volume", volume + input_volume)
-                    }
-
-                    VolumeChangeOptions::Decrease => {
-                        set_mpv_property(self, "volume", volume - input_volume)
-                    }
-
-                    VolumeChangeOptions::Absolute => set_mpv_property(self, "volume", input_volume),
-                }
-            }
+    fn toggle(&self) -> Result<(), String> {
+        match get_mpv_property::<bool>(self, "pause") {
+            Ok(paused) => set_mpv_property(self, "pause", !paused),
             Err(msg) => Err(msg),
         }
     }
@@ -202,6 +202,109 @@ impl Commands for Socket {
         }
     }
 
+    fn set_loop_file(&self, option: Switch) -> Result<(), String> {
+        let mut enabled = false;
+        match option {
+            Switch::On => enabled = true,
+            Switch::Off => {}
+            Switch::Toggle => {
+                match get_mpv_property_string(self, "loop-file") {
+                    Ok(value) => {
+                        match value.as_ref() {
+                            "false" => {
+                                enabled = true;
+                            }
+                            _ => {
+                                enabled = false;
+                            }
+                        }
+                    }
+                    Err(msg) => return Err(msg),
+                }
+            }
+        }
+        set_mpv_property(self, "loop-playlist", enabled)
+    }
+
+    fn set_loop_playlist(&self, option: Switch) -> Result<(), String> {
+        let mut enabled = false;
+        match option {
+            Switch::On => enabled = true,
+            Switch::Off => {}
+            Switch::Toggle => {
+                match get_mpv_property_string(self, "loop-playlist") {
+                    Ok(value) => {
+                        match value.as_ref() {
+                            "false" => {
+                                enabled = true;
+                            }
+                            _ => {
+                                enabled = false;
+                            }
+                        }
+                    }
+                    Err(msg) => return Err(msg),
+                }
+            }
+        }
+        set_mpv_property(self, "loop-playlist", enabled)
+    }
+
+    fn set_mute(&self, option: Switch) -> Result<(), String> {
+        let mut enabled = false;
+        match option {
+            Switch::On => enabled = true,
+            Switch::Off => {}
+            Switch::Toggle => {
+                match get_mpv_property::<bool>(self, "mute") {
+                    Ok(value) => {
+                        enabled = !value;
+                    }
+                    Err(msg) => return Err(msg),
+                }
+            }
+        }
+        set_mpv_property(self, "mute", enabled)
+    }
+
+    fn set_speed(&self, input_speed: f64, option: NumberChangeOptions) -> Result<(), String> {
+        match get_mpv_property::<f64>(self, "speed") {
+            Ok(speed) => {
+                match option {
+                    NumberChangeOptions::Increase => {
+                        set_mpv_property(self, "speed", speed + input_speed)
+                    }
+
+                    NumberChangeOptions::Decrease => {
+                        set_mpv_property(self, "speed", speed - input_speed)
+                    }
+
+                    NumberChangeOptions::Absolute => set_mpv_property(self, "speed", input_speed),
+                }
+            }
+            Err(msg) => Err(msg),
+        }
+    }
+
+    fn set_volume(&self, input_volume: f64, option: NumberChangeOptions) -> Result<(), String> {
+        match get_mpv_property::<f64>(self, "volume") {
+            Ok(volume) => {
+                match option {
+                    NumberChangeOptions::Increase => {
+                        set_mpv_property(self, "volume", volume + input_volume)
+                    }
+
+                    NumberChangeOptions::Decrease => {
+                        set_mpv_property(self, "volume", volume - input_volume)
+                    }
+
+                    NumberChangeOptions::Absolute => set_mpv_property(self, "volume", input_volume),
+                }
+            }
+            Err(msg) => Err(msg),
+        }
+    }
+
     fn playlist_add(&self, file: &str, option: PlaylistAddOptions) -> Result<(), String> {
         match option {
             PlaylistAddOptions::Replace => {
@@ -214,22 +317,18 @@ impl Commands for Socket {
         }
     }
 
-    fn playlist_shuffle(&self) -> Result<(), String> {
-        run_mpv_command(self, "playlist-shuffle", &vec![])
-    }
-
     fn playlist_clear(&self) -> Result<(), String> {
         run_mpv_command(self, "playlist-clear", &vec![])
-    }
-
-    fn playlist_remove_id(&self, id: usize) -> Result<(), String> {
-        run_mpv_command(self, "playlist-remove", &vec![&id.to_string()])
     }
 
     fn playlist_move_id(&self, from: usize, to: usize) -> Result<(), String> {
         run_mpv_command(self,
                         "playlist-remove",
                         &vec![&from.to_string(), &to.to_string()])
+    }
+
+    fn playlist_play_id(&self, id: usize) -> Result<(), String> {
+        set_mpv_property(self, "playlist-pos", id)
     }
 
     fn playlist_play_next(&self, id: usize) -> Result<(), String> {
@@ -247,11 +346,11 @@ impl Commands for Socket {
         }
     }
 
-    fn playlist_play_id(&self, id: usize) -> Result<(), String> {
-        set_mpv_property(self, "playlist-pos", id)
+    fn playlist_remove_id(&self, id: usize) -> Result<(), String> {
+        run_mpv_command(self, "playlist-remove", &vec![&id.to_string()])
     }
 
-    fn get_playlist(&self) -> Result<Playlist, String> {
-        Playlist::get_from(self.to_string())
+    fn playlist_shuffle(&self) -> Result<(), String> {
+        run_mpv_command(self, "playlist-shuffle", &vec![])
     }
 }
