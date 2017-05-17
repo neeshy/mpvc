@@ -28,7 +28,7 @@ pub enum Switch {
 }
 
 pub struct Playlist {
-    pub socket: String,
+    pub socket: Socket,
     pub entries: Vec<PlaylistEntry>,
 }
 

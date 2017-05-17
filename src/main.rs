@@ -734,6 +734,8 @@ fn main() {
             }
         }
 
-        (_, _) => unreachable!(),
+        (_, _) =>
+            //observe_property(&mpv, "playlist");
+        unreachable!(),
     }
 }

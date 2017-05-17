@@ -210,6 +210,26 @@ impl TypeHandler for Vec<PlaylistEntry> {
     }
 }
 
+/// #Description
+///
+/// Retrieves the property value from mpv.
+///
+/// ##Supported types
+/// - String
+/// - bool
+/// - HashMap<String, String> (e.g. for the 'metadata' property)
+/// - Vec<PlaylistEntry> (for the 'playlist' property)
+///
+/// ##Input arguments
+///
+/// - **socket** defines the socket that ipc connects to
+/// - **property** defines the mpv property that should be retrieved
+///
+/// #Example
+/// ```
+/// let paused: bool = get_mpv_property("/tmp/mpvsocket", "pause").unwrap();
+/// let title: String = get_mpv_property("/tmp/mpvsocket", "media-title").unwrap();
+/// ```
 pub fn get_mpv_property<T: TypeHandler>(socket: &str, property: &str) -> Result<T, String> {
     let ipc_string = format!("{{ \"command\": [\"get_property\",\"{}\"] }}\n", property);
 
@@ -219,6 +239,21 @@ pub fn get_mpv_property<T: TypeHandler>(socket: &str, property: &str) -> Result<
     }
 }
 
+/// #Description
+///
+/// Retrieves the property value from mpv. Implemented for the following types:
+/// The result is always of type String, regardless of the type of the value of the mpv property
+///
+/// ##Input arguments
+///
+/// - **socket** defines the socket that ipc connects to
+/// - **property** defines the mpv property that should be retrieved
+///
+/// #Example
+///
+/// ```
+/// let title = get_mpv_property("/tmp/mpvsocket", "media-title").unwrap();
+/// ```
 pub fn get_mpv_property_string(socket: &str, property: &str) -> Result<String, String> {
     let ipc_string = format!("{{ \"command\": [\"get_property\",\"{}\"] }}\n", property);
     match serde_json::from_str::<Value>(&send_command_sync(socket, &ipc_string)) {
@@ -248,6 +283,26 @@ pub fn get_mpv_property_string(socket: &str, property: &str) -> Result<String, S
     }
 }
 
+/// #Description
+///
+/// Sets the mpv property _<property>_ to _<value>_.
+///
+/// ##Supported types
+/// - String
+/// - bool
+/// - HashMap<String, String> (no use-cases known)
+/// - Vec<PlaylistEntry> (no use-cases known)
+///
+/// ##Input arguments
+///
+/// - **socket** defines the socket that ipc connects to
+/// - **property** defines the mpv property that should be retrieved
+/// - **value** defines the value of the given mpv property _<property>_
+///
+/// #Example
+/// ```
+/// set_mpv_property("/tmp/mpvsocket", "pause", true);
+/// ```
 pub fn set_mpv_property<T: TypeHandler>(socket: &str,
                                         property: &str,
                                         value: T)
@@ -261,6 +316,18 @@ pub fn set_mpv_property<T: TypeHandler>(socket: &str,
     }
 }
 
+/// #Description
+///
+/// Runs mpv commands. The arguments are passed as a String-Vector reference:
+///
+/// #Example
+/// ```
+/// //Run command 'playlist-shuffle' which takes no arguments
+/// run_mpv_command(&self.socket, "playlist-shuffle", &vec![]);
+///
+/// //Run command 'seek' which in this case takes two arguments
+/// run_mpv_command(self, "seek", &vec!["0", "absolute"]);
+/// ```
 pub fn run_mpv_command(socket: &str, command: &str, args: &Vec<&str>) -> Result<(), String> {
     let mut ipc_string = format!("{{ \"command\": [\"{}\"", command);
     if args.len() > 0 {
@@ -286,6 +353,15 @@ pub fn run_mpv_command(socket: &str, command: &str, args: &Vec<&str>) -> Result<
     }
 }
 
+/// #Description
+///
+/// Listens on socket <socket> for events and prints them in real-time to stdout.
+/// This function contains an infinite-loop which keeps the application open indefinitely.
+///
+/// #Example
+/// ```
+/// listen("/tmp/mpvsocket");
+/// ```
 pub fn listen(socket: &str) {
     match UnixStream::connect(socket) {
         Ok(stream) => {
@@ -293,7 +369,6 @@ pub fn listen(socket: &str) {
             let mut reader = BufReader::new(&stream);
             loop {
                 reader.read_line(&mut response).unwrap();
-                response = response;
                 match serde_json::from_str::<Value>(&response) {
                     Ok(e) => {
                         if let Value::String(ref name) = e["event"] {
@@ -309,6 +384,14 @@ pub fn listen(socket: &str) {
     }
 }
 
+/// #Description
+///
+/// Listens on socket <socket> for events quits as soon as event <event> occurs.
+///
+/// #Example
+/// ```
+/// wait_for_event("/tmp/mpvsocket", "pause");
+/// ```
 pub fn wait_for_event(socket: &str, event: &str) {
     match UnixStream::connect(socket) {
         Ok(stream) => {
@@ -316,7 +399,6 @@ pub fn wait_for_event(socket: &str, event: &str) {
             let mut reader = BufReader::new(&stream);
             loop {
                 reader.read_line(&mut response).unwrap();
-                response = response;
                 match serde_json::from_str::<Value>(&response) {
                     Ok(e) => {
                         if let Value::String(ref name) = e["event"] {
@@ -334,6 +416,28 @@ pub fn wait_for_event(socket: &str, event: &str) {
         Err(why) => error!("Error: Could not connect to socket: {}", why.description()),
     }
 }
+
+// pub fn observe_property(socket: &str, property: &str) -> String {
+//     match UnixStream::connect(socket) {
+//         Ok(mut stream) => {
+//             let command = format!("{{ \"command\": [\"observe_property\", 1, \"{}\"] }}\n",
+//                                   property);
+//             match stream.write_all(command.as_bytes()) {
+//                 Err(why) => error!("Error: Could not write to socket: {}", why.description()),
+//                 Ok(_) => {
+//                     let mut response = String::new();
+//                     let mut reader = BufReader::new(&stream);
+//                     loop {
+//                         reader.read_line(&mut response).unwrap();
+//                         println!("{}", response);
+//                         response.clear();
+//                     }
+//                 }
+//             }
+//         }
+//         Err(why) => error!("Error: Could not connect to socket: {}", why.description()),
+//     }
+// }
 
 fn send_command_sync(socket: &str, command: &str) -> String {
     match UnixStream::connect(socket) {
