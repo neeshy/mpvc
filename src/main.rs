@@ -4,19 +4,18 @@ extern crate clap;
 extern crate serde;
 extern crate serde_json;
 extern crate colored;
+extern crate mpvipc;
 
 #[macro_use]
 mod macros;
-mod ipc;
-mod commands;
 
 use std::process::exit;
 
 use clap::{AppSettings, Arg, SubCommand};
 use colored::*;
 
-use ipc::*;
-use commands::*;
+use mpvipc::*;
+use mpvipc::ipc::{wait_for_event, listen};
 
 fn main() {
 
@@ -322,7 +321,7 @@ fn main() {
                         if metadata.contains_key("title") {
                             output_string = output_string.replace("%title%", &metadata["title"]);
                         } else {
-                            match get_mpv_property::<String>(&mpv, "media-title") {
+                            match mpv.get_property::<String>("media-title") {
                                 Ok(media_title) => {
                                     output_string = output_string.replace("%title%", &media_title);
                                 }
@@ -407,7 +406,7 @@ fn main() {
                     }
 
                     if input_str.contains("%path%") {
-                        match get_mpv_property::<String>(&mpv, "path") {
+                        match mpv.get_property::<String>("path") {
                             Ok(path) => {
                                 output_string = output_string.replace("%path%", &path);
                             }
@@ -416,7 +415,7 @@ fn main() {
                     }
 
                     if input_str.contains("%file%") {
-                        match get_mpv_property::<String>(&mpv, "filename") {
+                        match mpv.get_property::<String>("filename") {
                             Ok(filename) => {
                                 output_string = output_string.replace("%file%", &filename);
                             }
@@ -425,7 +424,7 @@ fn main() {
                     }
 
                     if input_str.contains("%position%") {
-                        match get_mpv_property::<String>(&mpv, "playlist-pos") {
+                        match mpv.get_property::<String>("playlist-pos") {
                             Ok(position) => {
                                 output_string = output_string.replace("%position%", &position);
                             }
@@ -434,7 +433,7 @@ fn main() {
                     }
 
                     if input_str.contains("%playlistlength%") {
-                        match get_mpv_property::<String>(&mpv, "playlist-count") {
+                        match mpv.get_property::<String>("playlist-count") {
                             Ok(playlist_count) => {
                                 output_string =
                                     output_string.replace("%playlistlength%", &playlist_count);
@@ -452,7 +451,7 @@ fn main() {
             match get_matches.subcommand() {
                 ("property", Some(property_matches)) => {
                     let property = property_matches.value_of("property").unwrap();
-                    match get_mpv_property_string(&mpv, property) {
+                    match mpv.get_property_string(property) {
                         Ok(value) => {
                             println!("{}", value);
                             exit(0);
@@ -506,7 +505,7 @@ fn main() {
                 ("property", Some(property_matches)) => {
                     let property = property_matches.value_of("property").unwrap();
                     let value = property_matches.value_of("value").unwrap();
-                    if let Err(error_msg) = set_mpv_property(&mpv, property, value.to_string()) {
+                    if let Err(error_msg) = mpv.set_property(property, value.to_string()) {
                         error!("Error: {}", error_msg);
                     }
                 }
@@ -557,6 +556,27 @@ fn main() {
                     }
                 }
 
+                ("loop-file", Some(loop_playlist_matches)) => {
+                    match loop_playlist_matches.value_of("arg").unwrap() {
+                        "on" => {
+                            if let Err(msg) = mpv.set_loop_file(Switch::On) {
+                                error!("Error: {}", msg);
+                            }
+                        }
+                        "off" => {
+                            if let Err(msg) = mpv.set_loop_file(Switch::Off) {
+                                error!("Error: {}", msg);
+                            }
+                        }
+                        "toggle" => {
+                            if let Err(msg) = mpv.set_loop_file(Switch::Toggle) {
+                                error!("Error: {}", msg);
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+
                 ("loop-playlist", Some(loop_playlist_matches)) => {
                     match loop_playlist_matches.value_of("arg").unwrap() {
                         "on" => {
@@ -577,6 +597,7 @@ fn main() {
                         _ => unreachable!(),
                     }
                 }
+
                 (_, _) => unreachable!(),
             }
         }
