@@ -13,9 +13,8 @@ use std::process::exit;
 
 use clap::{AppSettings, Arg, SubCommand};
 use colored::*;
-
 use mpvipc::*;
-use mpvipc::ipc::{wait_for_event, listen};
+use std::sync::mpsc::channel;
 
 fn main() {
 
@@ -265,7 +264,13 @@ fn main() {
         .get_matches();
 
     //Input socket is always present, therefore unwrap
-    let mpv: Socket = String::from(matches.value_of("socket").unwrap());
+    let mpv;
+    match Mpv::connect(matches.value_of("socket").unwrap()) {
+        Ok(instance) => {
+            mpv = instance;
+        }
+        Err(msg) => error!("Error: {}", msg),
+    }
 
     match matches.subcommand() {
         ("pause", _) => {
@@ -629,12 +634,25 @@ fn main() {
         ("events", Some(events_matches)) => {
             match events_matches.subcommand() {
                 ("wait-for", Some(wait_for_matches)) => {
-                    let event = wait_for_matches.value_of("event").unwrap();
-                    wait_for_event(&mpv, event);
+                    let watched_event = wait_for_matches.value_of("event").unwrap();
+                    let (tx, rx) = channel();
+                    loop {
+                        mpv.listen(&tx);
+                        let event = rx.recv().unwrap();
+                        if event == watched_event {
+                            break;
+                        }
+                    }
                 }
 
                 ("show", _) => {
-                    listen(&mpv);
+                    mpv.observe_property(&1usize, "playlist").unwrap();
+                    let (tx, rx) = channel();
+                    loop {
+                        mpv.listen(&tx);
+                        let event = rx.recv().unwrap();
+                        println!("{}", event);
+                    }
                 }
 
                 (_, _) => unreachable!(),
@@ -733,7 +751,8 @@ fn main() {
                 ("show", _) => {
                     //Show the playlist
                     if let Ok(playlist) = mpv.get_playlist() {
-                        for entry in playlist.entries.iter() {
+                        let Playlist(entries) = playlist;
+                        for entry in entries.iter() {
                             if &entry.title == "" {
                                 let mut output = format!("{}\t{}", entry.id, entry.filename);
                                 if entry.current {
@@ -755,8 +774,6 @@ fn main() {
             }
         }
 
-        (_, _) =>
-            //observe_property(&mpv, "playlist");
-        unreachable!(),
+        (_, _) => unreachable!(),
     }
 }
