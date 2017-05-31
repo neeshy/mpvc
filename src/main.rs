@@ -193,6 +193,8 @@ fn main() {
             .setting(AppSettings::SubcommandRequiredElseHelp)
             .subcommand(SubCommand::with_name("show")
                 .about("Prints all mpv events in real-time."))
+            .subcommand(SubCommand::with_name("raw")
+                .about("Prints all mpv events in real-time in raw output format (JSON)."))
             .subcommand(SubCommand::with_name("wait-for")
                 .about("<EVENT>\n\
                 Runs until the mpv event <EVENT> is triggered.")
@@ -646,10 +648,20 @@ fn main() {
                 }
 
                 ("show", _) => {
-                    mpv.observe_property(&1usize, "playlist").unwrap();
+                    mpv.observe_property(&99usize, "playlist").unwrap();
                     let (tx, rx) = channel();
                     loop {
                         mpv.listen(&tx);
+                        let event = rx.recv().unwrap();
+                        println!("{}", event);
+                    }
+                }
+
+                ("raw", _) => {
+                    mpv.observe_property(&99usize, "playlist").unwrap();
+                    let (tx, rx) = channel();
+                    loop {
+                        mpv.listen_raw(&tx);
                         let event = rx.recv().unwrap();
                         println!("{}", event);
                     }
@@ -776,4 +788,7 @@ fn main() {
 
         (_, _) => unreachable!(),
     }
+
+    mpv.shutdown(std::net::Shutdown::Both)
+        .expect("shutdown function failed");
 }
