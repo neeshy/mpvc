@@ -197,9 +197,26 @@ fn main() {
                 .about("Prints all mpv events in real-time in raw output format (JSON)."))
             .subcommand(SubCommand::with_name("wait-for")
                 .about("<EVENT>\n\
-                Runs until the mpv event <EVENT> is triggered.")
+                Runs until the mpv event <EVENT> is triggered. See --help for possible events.")
                 .arg(Arg::with_name("event")
                     .value_name("event")
+                    .possible_values(&["Shutdown",
+                        "StartFile",
+                        "EndFile",
+                        "FileLoaded",
+                        "TracksChanged",
+                        "TrackSwitched",
+                        "Idle",
+                        "Pause",
+                        "Unpause",
+                        "Tick",
+                        "VideoReconfig",
+                        "AudioReconfig",
+                        "MetadataUpdate",
+                        "Seek",
+                        "PlaybackRestart",
+                        "ChapterChange",
+                        "Unimplemented"])
                     .required(true))))
         .subcommand(SubCommand::with_name("stop")
             .about("Stop playback and clear playlist."))
@@ -223,7 +240,12 @@ fn main() {
                     <replace>: Stop playback of the current file, and play the new file immediately.\n\
                     <append>: Append the file to the playlist.\n\
                     <append-play>: Append the file, and if nothing is currently playing, start playback.\n\n")
-                    .takes_value(true)))
+                    .takes_value(true))
+                .arg(Arg::with_name("type")
+                    .short("t")
+                    .long("type")
+                    .possible_values(&["file", "playlist"])
+                    .default_value("file")))
             .subcommand(SubCommand::with_name("show")
                 .about("Prints the 0-based playlist."))
             .subcommand(SubCommand::with_name("clear")
@@ -639,21 +661,21 @@ fn main() {
                     let watched_event = wait_for_matches.value_of("event").unwrap();
                     let (tx, rx) = channel();
                     loop {
-                        mpv.listen(&tx);
+                        mpv.event_listen(&tx);
                         let event = rx.recv().unwrap();
-                        if event == watched_event {
+                        let event_str = &format!("{:?}", event);
+                        if event_str == watched_event {
                             break;
                         }
                     }
                 }
-
                 ("show", _) => {
                     mpv.observe_property(&99usize, "playlist").unwrap();
                     let (tx, rx) = channel();
                     loop {
-                        mpv.listen(&tx);
+                        mpv.event_listen(&tx);
                         let event = rx.recv().unwrap();
-                        println!("{}", event);
+                        println!("{:?}", event);
                     }
                 }
 
@@ -661,7 +683,7 @@ fn main() {
                     mpv.observe_property(&99usize, "playlist").unwrap();
                     let (tx, rx) = channel();
                     loop {
-                        mpv.listen_raw(&tx);
+                        mpv.event_listen_raw(&tx);
                         let event = rx.recv().unwrap();
                         println!("{}", event);
                     }
@@ -675,31 +697,34 @@ fn main() {
             match playlist_matches.subcommand() {
                 ("add", Some(add_matches)) => {
                     let file = add_matches.value_of("file").unwrap();
-                    if add_matches.is_present("mode") {
-                        match add_matches.value_of("mode").unwrap() {
-                            "replace" => {
-                                if let Err(msg) =
-                                    mpv.playlist_add(file, PlaylistAddOptions::Replace) {
-                                    error!("Error: {}", msg);
-                                }
+                    let file_type = match add_matches.value_of("type").unwrap() {
+                        "file" => PlaylistAddTypeOptions::File,
+                        "playlist" => PlaylistAddTypeOptions::Playlist,
+                        _ => unreachable!(),
+                    };
+                    match add_matches.value_of("mode").unwrap() {
+                        "replace" => {
+                            if let Err(msg) =
+                                mpv.playlist_add(file, file_type, PlaylistAddOptions::Replace) {
+                                error!("Error: {}", msg);
                             }
-
-                            "append" => {
-                                if let Err(msg) =
-                                    mpv.playlist_add(file, PlaylistAddOptions::Append) {
-                                    error!("Error: {}", msg);
-                                }
-                            }
-
-                            "append-play" => {
-                                if let Err(msg) =
-                                    mpv.playlist_add(file, PlaylistAddOptions::AppendPlay) {
-                                    error!("Error: {}", msg);
-                                }
-                            }
-
-                            _ => unreachable!(),
                         }
+
+                        "append" => {
+                            if let Err(msg) =
+                                mpv.playlist_add(file, file_type, PlaylistAddOptions::Append) {
+                                error!("Error: {}", msg);
+                            }
+                        }
+
+                        "append-play" => {
+                            if let Err(msg) =
+                                mpv.playlist_add(file, file_type, PlaylistAddOptions::AppendPlay) {
+                                error!("Error: {}", msg);
+                            }
+                        }
+
+                        _ => unreachable!(),
                     }
                 }
 
@@ -788,7 +813,4 @@ fn main() {
 
         (_, _) => unreachable!(),
     }
-
-    mpv.shutdown(std::net::Shutdown::Both)
-        .expect("shutdown function failed");
 }
