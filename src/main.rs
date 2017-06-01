@@ -670,7 +670,7 @@ fn main() {
                     }
                 }
                 ("show", _) => {
-                    mpv.observe_property(&99usize, "playlist").unwrap();
+                    //mpv.observe_property(&99usize, "playlist").unwrap();
                     let (tx, rx) = channel();
                     loop {
                         mpv.event_listen(&tx);
@@ -680,7 +680,7 @@ fn main() {
                 }
 
                 ("raw", _) => {
-                    mpv.observe_property(&99usize, "playlist").unwrap();
+                    //mpv.observe_property(&99usize, "playlist").unwrap();
                     let (tx, rx) = channel();
                     loop {
                         mpv.event_listen_raw(&tx);
