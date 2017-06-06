@@ -1,7 +1,7 @@
 [package]
 
 name = "mpvc"
-version = "1.0.3"
+version = "1.0.4"
 authors = [ "Jonas Frei <freijon@gmail.com>" ]
 description = "An mpc-like cli tool for mpv which connects to existing mpv instances through sockets."
 

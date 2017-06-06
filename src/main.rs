@@ -195,11 +195,22 @@ fn main() {
                 .about("Prints all mpv events in real-time."))
             .subcommand(SubCommand::with_name("raw")
                 .about("Prints all mpv events in real-time in raw output format (JSON)."))
+            .subcommand(SubCommand::with_name("observe-property")
+                .about("<PROPERTY>\n\
+                Observes a property and informs about changes.")
+                .arg(Arg::with_name("property")
+                .value_name("PROPERTY")
+                .required(true))
+                .arg(Arg::with_name("show-data")
+                    .short("d")
+                    .long("show-data")
+                    .help("Prints the new content of the observed property")
+                    .takes_value(false)))
             .subcommand(SubCommand::with_name("wait-for")
                 .about("<EVENT>\n\
                 Runs until the mpv event <EVENT> is triggered. See --help for possible events.")
                 .arg(Arg::with_name("event")
-                    .value_name("event")
+                    .value_name("EVENT")
                     .possible_values(&["Shutdown",
                         "StartFile",
                         "EndFile",
@@ -348,7 +359,9 @@ fn main() {
                 Ok(metadata) => {
                     if input_str.contains("%title%") {
                         if metadata.contains_key("title") {
-                            output_string = output_string.replace("%title%", &metadata["title"]);
+                            if let MpvDataType::String(ref s) = metadata["title"] {
+                                output_string = output_string.replace("%title%", s);
+                            }
                         } else {
                             match mpv.get_property::<String>("media-title") {
                                 Ok(media_title) => {
@@ -361,7 +374,9 @@ fn main() {
 
                     if input_str.contains("%artist%") {
                         if metadata.contains_key("artist") {
-                            output_string = output_string.replace("%artist%", &metadata["artist"]);
+                            if let MpvDataType::String(ref s) = metadata["artist"] {
+                                output_string = output_string.replace("%artist%", s);
+                            }
                         } else {
                             output_string = output_string.replace("%artist%", "");
                         }
@@ -369,7 +384,9 @@ fn main() {
 
                     if input_str.contains("%album%") {
                         if metadata.contains_key("album") {
-                            output_string = output_string.replace("%album%", &metadata["album"]);
+                            if let MpvDataType::String(ref s) = metadata["album"] {
+                                output_string = output_string.replace("%album%", s);
+                            }
                         } else {
                             output_string = output_string.replace("%album%", "");
                         }
@@ -377,8 +394,9 @@ fn main() {
 
                     if input_str.contains("%albumartist%") {
                         if metadata.contains_key("album_artist") {
-                            output_string =
-                                output_string.replace("%albumartist%", &metadata["album_artist"]);
+                            if let MpvDataType::String(ref s) = metadata["album_artist"] {
+                                output_string = output_string.replace("%albumartist%", s);
+                            }
                         } else {
                             output_string = output_string.replace("%albumartist%", "");
                         }
@@ -386,7 +404,9 @@ fn main() {
 
                     if input_str.contains("%date%") {
                         if metadata.contains_key("date") {
-                            output_string = output_string.replace("%date%", &metadata["date"]);
+                            if let MpvDataType::String(ref s) = metadata["date"] {
+                                output_string = output_string.replace("%date%", s);
+                            }
                         } else {
                             output_string = output_string.replace("%date%", "");
                         }
@@ -394,7 +414,9 @@ fn main() {
 
                     if input_str.contains("%track%") {
                         if metadata.contains_key("track") {
-                            output_string = output_string.replace("%track%", &metadata["track"]);
+                            if let MpvDataType::String(ref s) = metadata["track"] {
+                                output_string = output_string.replace("%track%", s);
+                            }
                         } else {
                             output_string = output_string.replace("%track%", "");
                         }
@@ -402,7 +424,9 @@ fn main() {
 
                     if input_str.contains("%genre%") {
                         if metadata.contains_key("genre") {
-                            output_string = output_string.replace("%genre%", &metadata["genre"]);
+                            if let MpvDataType::String(ref s) = metadata["genre"] {
+                                output_string = output_string.replace("%genre%", s);
+                            }
                         } else {
                             output_string = output_string.replace("%genre%", "");
                         }
@@ -410,8 +434,9 @@ fn main() {
 
                     if input_str.contains("%composer%") {
                         if metadata.contains_key("composer") {
-                            output_string =
-                                output_string.replace("%composer%", &metadata["composer"]);
+                            if let MpvDataType::String(ref s) = metadata["composer"] {
+                                output_string = output_string.replace("%composer%", s);
+                            }
                         } else {
                             output_string = output_string.replace("%composer%", "");
                         }
@@ -419,8 +444,9 @@ fn main() {
 
                     if input_str.contains("%comment%") {
                         if metadata.contains_key("comment") {
-                            output_string =
-                                output_string.replace("%comment%", &metadata["comment"]);
+                            if let MpvDataType::String(ref s) = metadata["comment"] {
+                                output_string = output_string.replace("%comment%", s);
+                            }
                         } else {
                             output_string = output_string.replace("%comment%", "");
                         }
@@ -428,7 +454,9 @@ fn main() {
 
                     if input_str.contains("%disc%") {
                         if metadata.contains_key("disc") {
-                            output_string = output_string.replace("%disc%", &metadata["disc"]);
+                            if let MpvDataType::String(ref s) = metadata["disc"] {
+                                output_string = output_string.replace("%disc%", s);
+                            }
                         } else {
                             output_string = output_string.replace("%disc%", "");
                         }
@@ -496,7 +524,11 @@ fn main() {
                                 println!("File has no metadata");
                             } else {
                                 for (key, value) in metadata.iter() {
-                                    println!("{}: {}", key, value);
+                                    if let MpvDataType::String(ref v) = *value {
+                                        println!("{}: {}", key, v);
+                                    } else {
+                                        println!("{}: {:?}", key, value);
+                                    }
                                 }
                             }
                         }
@@ -661,26 +693,66 @@ fn main() {
                     let watched_event = wait_for_matches.value_of("event").unwrap();
                     let (tx, rx) = channel();
                     loop {
-                        mpv.event_listen(&tx);
-                        let event = rx.recv().unwrap();
-                        let event_str = &format!("{:?}", event);
-                        if event_str == watched_event {
-                            break;
+                        match mpv.event_listen(&tx) {
+                            Ok(_) => {
+                                let event = rx.recv().unwrap();
+                                let event_str = &format!("{:?}", event);
+                                if event_str == watched_event {
+                                    break;
+                                }
+                            }
+                            Err(msg) => {
+                                error!("Error: {}", msg);
+                            }
                         }
                     }
                 }
                 ("show", _) => {
-                    //mpv.observe_property(&99usize, "playlist").unwrap();
+                    mpv.observe_property(&99usize, "metadata").unwrap();
                     let (tx, rx) = channel();
                     loop {
-                        mpv.event_listen(&tx);
-                        let event = rx.recv().unwrap();
-                        println!("{:?}", event);
+                        match mpv.event_listen(&tx) {
+                            Ok(_) => {
+                                let event = rx.recv().unwrap();
+                                println!("{:?}", event);
+                            }
+                            Err(msg) => {
+                                error!("Error: {}", msg);
+                            }
+                        }
+
+                    }
+                }
+
+                ("observe-property", Some(observe_matches)) => {
+                    let observed_property = observe_matches.value_of("property").unwrap();
+                    mpv.observe_property(&1usize, observed_property).unwrap();
+                    let (tx, rx) = channel();
+                    loop {
+                        match mpv.event_listen(&tx) {
+                            Ok(_) => {
+                                let event = rx.recv().unwrap();
+                                if let Event::PropertyChange { name, id, data } = event {
+                                    if observe_matches.is_present("show-data") {
+                                        println!("PropertyChange (name={}, id={}, data={:?})",
+                                                 name,
+                                                 id,
+                                                 data);
+                                    } else {
+                                        println!("PropertyChange (name={}, id={})", name, id);
+                                    }
+                                }
+                            }
+                            Err(msg) => {
+                                error!("Error: {}", msg);
+                            }
+                        }
+
                     }
                 }
 
                 ("raw", _) => {
-                    //mpv.observe_property(&99usize, "playlist").unwrap();
+                    //mpv.observe_property(&99usize, "metadata").unwrap();
                     let (tx, rx) = channel();
                     loop {
                         mpv.event_listen_raw(&tx);
