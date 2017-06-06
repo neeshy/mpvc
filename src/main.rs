@@ -708,7 +708,6 @@ fn main() {
                     }
                 }
                 ("show", _) => {
-                    mpv.observe_property(&99usize, "metadata").unwrap();
                     let (tx, rx) = channel();
                     loop {
                         match mpv.event_listen(&tx) {
