@@ -14,7 +14,6 @@ use std::process::exit;
 use clap::{AppSettings, Arg, SubCommand};
 use colored::*;
 use mpvipc::*;
-use std::sync::mpsc::channel;
 
 fn main() {
 
@@ -574,21 +573,27 @@ fn main() {
                 ("volume", Some(volume_matches)) => {
                     let num = volume_matches.value_of("num").unwrap();
                     if volume_matches.is_present("increase") {
-                        if let Err(msg) =
-                            mpv.set_volume(num.parse::<f64>().unwrap(),
-                                           NumberChangeOptions::Increase) {
+                        if let Err(msg) = mpv.set_volume(
+                            num.parse::<f64>().unwrap(),
+                            NumberChangeOptions::Increase,
+                        )
+                        {
                             error!("Error: {}", msg);
                         }
                     } else if volume_matches.is_present("decrease") {
-                        if let Err(msg) =
-                            mpv.set_volume(num.parse::<f64>().unwrap(),
-                                           NumberChangeOptions::Decrease) {
+                        if let Err(msg) = mpv.set_volume(
+                            num.parse::<f64>().unwrap(),
+                            NumberChangeOptions::Decrease,
+                        )
+                        {
                             error!("Error: {}", msg);
                         }
                     } else {
-                        if let Err(msg) =
-                            mpv.set_volume(num.parse::<f64>().unwrap(),
-                                           NumberChangeOptions::Absolute) {
+                        if let Err(msg) = mpv.set_volume(
+                            num.parse::<f64>().unwrap(),
+                            NumberChangeOptions::Absolute,
+                        )
+                        {
                             error!("Error: {}", msg);
                         }
                     }
@@ -597,21 +602,27 @@ fn main() {
                 ("speed", Some(speed_matches)) => {
                     let num = speed_matches.value_of("num").unwrap();
                     if speed_matches.is_present("increase") {
-                        if let Err(msg) =
-                            mpv.set_speed(num.parse::<f64>().unwrap(),
-                                          NumberChangeOptions::Increase) {
+                        if let Err(msg) = mpv.set_speed(
+                            num.parse::<f64>().unwrap(),
+                            NumberChangeOptions::Increase,
+                        )
+                        {
                             error!("Error: {}", msg);
                         }
                     } else if speed_matches.is_present("decrease") {
-                        if let Err(msg) =
-                            mpv.set_speed(num.parse::<f64>().unwrap(),
-                                          NumberChangeOptions::Decrease) {
+                        if let Err(msg) = mpv.set_speed(
+                            num.parse::<f64>().unwrap(),
+                            NumberChangeOptions::Decrease,
+                        )
+                        {
                             error!("Error: {}", msg);
                         }
                     } else {
-                        if let Err(msg) =
-                            mpv.set_speed(num.parse::<f64>().unwrap(),
-                                          NumberChangeOptions::Absolute) {
+                        if let Err(msg) = mpv.set_speed(
+                            num.parse::<f64>().unwrap(),
+                            NumberChangeOptions::Absolute,
+                        )
+                        {
                             error!("Error: {}", msg);
                         }
                     }
@@ -691,11 +702,10 @@ fn main() {
             match events_matches.subcommand() {
                 ("wait-for", Some(wait_for_matches)) => {
                     let watched_event = wait_for_matches.value_of("event").unwrap();
-                    let (tx, rx) = channel();
+                    let mut mpv = mpv;
                     loop {
-                        match mpv.event_listen(&tx) {
-                            Ok(_) => {
-                                let event = rx.recv().unwrap();
+                        match mpv.event_listen() {
+                            Ok(event) => {
                                 let event_str = &format!("{:?}", event);
                                 if event_str == watched_event {
                                     break;
@@ -708,35 +718,34 @@ fn main() {
                     }
                 }
                 ("show", _) => {
-                    let (tx, rx) = channel();
+                    let mut mpv = mpv;
                     loop {
-                        match mpv.event_listen(&tx) {
-                            Ok(_) => {
-                                let event = rx.recv().unwrap();
+                        match mpv.event_listen() {
+                            Ok(event) => {
                                 println!("{:?}", event);
                             }
                             Err(msg) => {
                                 error!("Error: {}", msg);
                             }
                         }
-
                     }
                 }
 
                 ("observe-property", Some(observe_matches)) => {
                     let observed_property = observe_matches.value_of("property").unwrap();
                     mpv.observe_property(&1usize, observed_property).unwrap();
-                    let (tx, rx) = channel();
+                    let mut mpv = mpv;
                     loop {
-                        match mpv.event_listen(&tx) {
-                            Ok(_) => {
-                                let event = rx.recv().unwrap();
+                        match mpv.event_listen() {
+                            Ok(event) => {
                                 if let Event::PropertyChange { name, id, data } = event {
                                     if observe_matches.is_present("show-data") {
-                                        println!("PropertyChange (name={}, id={}, data={:?})",
-                                                 name,
-                                                 id,
-                                                 data);
+                                        println!(
+                                            "PropertyChange (name={}, id={}, data={:?})",
+                                            name,
+                                            id,
+                                            data
+                                        );
                                     } else {
                                         println!("PropertyChange (name={}, id={})", name, id);
                                     }
@@ -751,11 +760,11 @@ fn main() {
                 }
 
                 ("raw", _) => {
-                    //mpv.observe_property(&99usize, "metadata").unwrap();
-                    let (tx, rx) = channel();
+                    mpv.observe_property(&99usize, "duration").unwrap();
+                    let mut mpv = mpv;
                     loop {
-                        mpv.event_listen_raw(&tx);
-                        let event = rx.recv().unwrap();
+                        let event = mpv.event_listen_raw();
+                        //print!("{}", event);
                         println!("{}", event);
                     }
                 }
@@ -775,22 +784,34 @@ fn main() {
                     };
                     match add_matches.value_of("mode").unwrap() {
                         "replace" => {
-                            if let Err(msg) =
-                                mpv.playlist_add(file, file_type, PlaylistAddOptions::Replace) {
+                            if let Err(msg) = mpv.playlist_add(
+                                file,
+                                file_type,
+                                PlaylistAddOptions::Replace,
+                            )
+                            {
                                 error!("Error: {}", msg);
                             }
                         }
 
                         "append" => {
-                            if let Err(msg) =
-                                mpv.playlist_add(file, file_type, PlaylistAddOptions::Append) {
+                            if let Err(msg) = mpv.playlist_add(
+                                file,
+                                file_type,
+                                PlaylistAddOptions::Append,
+                            )
+                            {
                                 error!("Error: {}", msg);
                             }
                         }
 
                         "append-play" => {
-                            if let Err(msg) =
-                                mpv.playlist_add(file, file_type, PlaylistAddOptions::AppendPlay) {
+                            if let Err(msg) = mpv.playlist_add(
+                                file,
+                                file_type,
+                                PlaylistAddOptions::AppendPlay,
+                            )
+                            {
                                 error!("Error: {}", msg);
                             }
                         }
@@ -812,46 +833,58 @@ fn main() {
                 }
 
                 ("remove-id", Some(remove_id_matches)) => {
-                    if let Err(msg) = mpv.playlist_remove_id(remove_id_matches
-                                                                 .value_of("id")
-                                                                 .unwrap()
-                                                                 .parse::<usize>()
-                                                                 .unwrap()) {
+                    if let Err(msg) = mpv.playlist_remove_id(
+                        remove_id_matches
+                            .value_of("id")
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap(),
+                    )
+                    {
                         error!("Error: {}", msg);
                     }
                 }
 
                 ("move-id", Some(move_id_matches)) => {
-                    if let Err(msg) = mpv.playlist_move_id(move_id_matches
-                                                               .value_of("from")
-                                                               .unwrap()
-                                                               .parse::<usize>()
-                                                               .unwrap(),
-                                                           move_id_matches
-                                                               .value_of("to")
-                                                               .unwrap()
-                                                               .parse::<usize>()
-                                                               .unwrap()) {
+                    if let Err(msg) = mpv.playlist_move_id(
+                        move_id_matches
+                            .value_of("from")
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap(),
+                        move_id_matches
+                            .value_of("to")
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap(),
+                    )
+                    {
                         error!("Error: {}", msg);
                     }
                 }
 
                 ("play-id-next", Some(play_next_matches)) => {
-                    if let Err(msg) = mpv.playlist_play_next(play_next_matches
-                                                                 .value_of("id")
-                                                                 .unwrap()
-                                                                 .parse::<usize>()
-                                                                 .unwrap()) {
+                    if let Err(msg) = mpv.playlist_play_next(
+                        play_next_matches
+                            .value_of("id")
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap(),
+                    )
+                    {
                         error!("Error: {}", msg);
                     }
                 }
 
                 ("play-id", Some(play_id_matches)) => {
-                    if let Err(msg) = mpv.playlist_play_id(play_id_matches
-                                                               .value_of("id")
-                                                               .unwrap()
-                                                               .parse::<usize>()
-                                                               .unwrap()) {
+                    if let Err(msg) = mpv.playlist_play_id(
+                        play_id_matches
+                            .value_of("id")
+                            .unwrap()
+                            .parse::<usize>()
+                            .unwrap(),
+                    )
+                    {
                         error!("Error: {}", msg);
                     }
                 }
@@ -884,4 +917,6 @@ fn main() {
 
         (_, _) => unreachable!(),
     }
+
+    //mpv.disconnect();
 }
