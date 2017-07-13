@@ -48,4 +48,4 @@ Then use it as follows:
 
 ## BUGS / IDEAS
 
-Check out the [Issue Tracker](https://gitlab.com/freijon/mpvc-rs/issues)
+Check out the [Issue Tracker](https://gitlab.com/mpv-ipc/mpvc-rs/issues)
