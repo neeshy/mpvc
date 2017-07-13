@@ -38,11 +38,14 @@ I'm not sure yet where to go with this project so this might change in the futur
 
 #### mps-youtube
 
-mpvc can be used with mps-youtube. In order to use mpvc with mpsyt you have to set the following option in mpsyt:\
+mpvc can be used with mps-youtube. In order to use mpvc with mpsyt you have to set the following option in mpsyt:
+
 `set download_command mpvc playlist add --mode=append-play https://youtu.be/%i#%f`
 
-Then use it as follows:\
+Then use it as follows:
+
 `da 1-5`
+
 ## BUGS / IDEAS
 
 Check out the [Issue Tracker](https://gitlab.com/freijon/mpvc-rs/issues)
