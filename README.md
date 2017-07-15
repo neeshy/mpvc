@@ -1,3 +1,4 @@
+![mpvc screenshot](https://gitlab.com/mpv-ipc/mpvc-rs/raw/master/res/logo.png "logo")
 # mpvc
 
 An mpc-like cli tool for mpv which connects to existing mpv instances through sockets, written in Rust
