@@ -1,4 +1,4 @@
-![mpvc screenshot](https://gitlab.com/mpv-ipc/mpvc-rs/raw/master/res/logo.png "logo")
+![mpvc screenshot](https://gitlab.com/mpv-ipc/mpvc/raw/master/res/logo.png "logo")
 # mpvc
 
 An mpc-like cli tool for mpv which connects to existing mpv instances through sockets, written in Rust
@@ -18,7 +18,7 @@ $ mpv --input-ipc-server=/tmp/mpvsocket ...
 
 ## Install
 
-- [Arch](https://aur.archlinux.org/packages/mpvc-rs) - `yaourt mpvc-rs-git`
+- [Arch](https://aur.archlinux.org/packages/mpvc-rs) - `yaourt mpvc-rs`
 
 If you have packaged mpvc for your distribution, let me know so I can add it here.
 
@@ -49,4 +49,4 @@ Then use it as follows:
 
 ## BUGS / IDEAS
 
-Check out the [Issue Tracker](https://gitlab.com/mpv-ipc/mpvc-rs/issues)
+Check out the [Issue Tracker](https://gitlab.com/mpv-ipc/mpvc/issues)
