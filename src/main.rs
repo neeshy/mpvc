@@ -194,16 +194,16 @@ fn main() {
                 .about("Prints all mpv events in real-time."))
             .subcommand(SubCommand::with_name("raw")
                 .about("Prints all mpv events in real-time in raw output format (JSON)."))
-            .subcommand(SubCommand::with_name("observe-property")
-                .about("<PROPERTY>\n\
-                Observes a property and informs about changes.")
-                .arg(Arg::with_name("property")
-                .value_name("PROPERTY")
+            .subcommand(SubCommand::with_name("observe")
+                .about("<PROPERTIES>\n\
+                Observes a comma separated set of properties and informs about changes.")
+                .arg(Arg::with_name("properties")
+                .value_name("PROPERTIES")
                 .required(true))
-                .arg(Arg::with_name("show-data")
-                    .short("d")
-                    .long("show-data")
-                    .help("Prints the new content of the observed property")
+                .arg(Arg::with_name("hide-data")
+                    .short("h")
+                    .long("hide-data")
+                    .help("Hides the new content of the observed property (useful for properties with a lot of data)")
                     .takes_value(false)))
             .subcommand(SubCommand::with_name("wait-for")
                 .about("<EVENT>\n\
@@ -306,6 +306,7 @@ fn main() {
         Err(msg) => error!("Error: {}", msg),
     }
 
+    // The user used the sub-command `pause`
     match matches.subcommand() {
         ("pause", _) => {
             if let Err(msg) = mpv.pause() {
@@ -313,47 +314,53 @@ fn main() {
             }
         }
 
+        // The user used the sub-command `toggle`
         ("toggle", _) => {
             if let Err(msg) = mpv.toggle() {
                 error!("Error: {}", msg);
             }
         }
 
+        // The user used the sub-command `pause`
         ("next", _) => {
             if let Err(msg) = mpv.next() {
                 error!("Error: {}", msg);
             }
         }
 
+        // The user used the sub-command `prev`
         ("prev", _) => {
             if let Err(msg) = mpv.prev() {
                 error!("Error: {}", msg);
             }
         }
 
+        // The user used the sub-command `restart`
         ("restart", _) => {
             if let Err(msg) = mpv.restart() {
                 error!("Error: {}", msg);
             }
         }
 
+        // The user used the sub-command `stop`
         ("stop", _) => {
             if let Err(msg) = mpv.stop() {
                 error!("Error: {}", msg);
             }
         }
 
+        // The user used the sub-command `kill`
         ("kill", _) => {
             if let Err(msg) = mpv.kill() {
                 error!("Error: {}", msg);
             }
         }
 
+        // The user used the sub-command `format`
         ("format", Some(input)) => {
             let input_str = input.value_of("input").unwrap();
             let mut output_string = String::from(input_str);
 
-            // %status%: \n\
             match mpv.get_metadata() {
                 Ok(metadata) => {
                     if input_str.contains("%title%") {
@@ -503,6 +510,7 @@ fn main() {
             println!("{}", output_string);
         }
 
+        // The user used the sub-command `get`
         ("get", Some(get_matches)) => {
             match get_matches.subcommand() {
                 ("property", Some(property_matches)) => {
@@ -539,6 +547,7 @@ fn main() {
             }
         }
 
+        // The user used the sub-command `set`
         ("set", Some(set_matches)) => {
             match set_matches.subcommand() {
                 ("mute", Some(mute_matches)) => {
@@ -674,6 +683,7 @@ fn main() {
             }
         }
 
+        // The user used the sub-command `seek`
         ("seek", Some(seek_matches)) => {
             let num = seek_matches.value_of("num").unwrap();
             let mut n: f64 = num.parse().expect("Parse f64");
@@ -698,6 +708,7 @@ fn main() {
             }
         }
 
+        // The user used the sub-command `events`
         ("events", Some(events_matches)) => {
             match events_matches.subcommand() {
                 ("wait-for", Some(wait_for_matches)) => {
@@ -731,23 +742,30 @@ fn main() {
                     }
                 }
 
-                ("observe-property", Some(observe_matches)) => {
-                    let observed_property = observe_matches.value_of("property").unwrap();
-                    mpv.observe_property(&1usize, observed_property).unwrap();
+                ("observe", Some(observe_matches)) => {
+                    let observed_properties = observe_matches.value_of("properties").unwrap();
+                    let props: Vec<&str> = observed_properties.split(',').collect();
+                    for (i, property) in props.iter().enumerate() {
+                        mpv.observe_property(&(i + 1), property).unwrap();
+                    }
                     let mut mpv = mpv;
                     loop {
                         match mpv.event_listen() {
                             Ok(event) => {
                                 if let Event::PropertyChange { name, id, data } = event {
-                                    if observe_matches.is_present("show-data") {
+                                    if observe_matches.is_present("hide-data") {
+                                        println!(
+                                            "PropertyChange (name={}, id={})",
+                                            name,
+                                            id,
+                                        );
+                                    } else {
                                         println!(
                                             "PropertyChange (name={}, id={}, data={:?})",
                                             name,
                                             id,
                                             data
                                         );
-                                    } else {
-                                        println!("PropertyChange (name={}, id={})", name, id);
                                     }
                                 }
                             }
@@ -773,6 +791,7 @@ fn main() {
             }
         }
 
+        // The user used the sub-command `playlist`
         ("playlist", Some(playlist_matches)) => {
             match playlist_matches.subcommand() {
                 ("add", Some(add_matches)) => {
