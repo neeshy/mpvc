@@ -19,6 +19,7 @@ $ mpv --input-ipc-server=/tmp/mpvsocket ...
 ## Install
 
 - [Arch](https://aur.archlinux.org/packages/mpvc-rs) - `yaourt mpvc-rs`
+- [Gentoo](https://github.com/winny-/winny-overlay) - `layman -o https://raw.githubusercontent.com/winny-/winny-overlay/master/overlay.xml -f -a winny && emerge -av media-sound/mpvc`
 
 If you have packaged mpvc for your distribution, let me know so I can add it here.
 
