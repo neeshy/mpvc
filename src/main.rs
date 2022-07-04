@@ -293,7 +293,10 @@ fn main() {
                 .arg(Arg::with_name("id")
                     .value_name("ID")
                     .help("Defines the id that should be played next")
-                    .required(true))))
+                    .required(true)))
+            .subcommand(SubCommand::with_name("reverse")
+                .about("Reverses the playlist")
+                .visible_alias("rev")))
         .get_matches();
 
     //Input socket is always present, therefore unwrap
@@ -931,6 +934,20 @@ fn main() {
                     )
                     {
                         error!("Error: {}", msg);
+                    }
+                }
+
+                ("reverse", _) => {
+                    if let Ok(playlist) = mpv.get_playlist() {
+                        let Playlist(entries) = playlist;
+                        let mut i = 0usize;
+                        while i < entries.len() {
+                            if let Err(msg) = mpv.playlist_move_id((entries.len() -1) as usize, i)
+                            {
+                                error!("Error: {}", msg);
+                            }
+                            i += 1;
+                        }
                     }
                 }
 
