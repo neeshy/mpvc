@@ -1,4 +1,3 @@
-#[macro_use]
 extern crate clap;
 
 extern crate serde;
@@ -11,20 +10,20 @@ mod macros;
 
 use std::process::exit;
 
-use clap::{AppSettings, Arg, SubCommand};
+use clap::{AppSettings, Arg, Command, SubCommand};
 use colored::*;
 use mpvipc::*;
 
 fn main() {
 
-    let matches = app_from_crate!()
+    let matches = Command::new(env!("CARGO_CRATE_NAME"))
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(Arg::with_name("socket")
-            .short("S")
+            .short('S')
             .long("socket")
             .value_name("/path/to/socket")
             .help("Specifies the path to the socket")
-            .default_value("/tmp/mpvsocket")
+            .default_value("/tmp/mpv.sock")
             .takes_value(true))
         .arg(Arg::with_name("list-options")
             .long("list-options")
@@ -72,12 +71,12 @@ fn main() {
                     .value_name("NUM")
                     .required(true))
                 .arg(Arg::with_name("increase")
-                    .short("i")
+                    .short('i')
                     .long("increase")
                     .help("If set will increase volume by <NUM>")
                     .takes_value(false))
                 .arg(Arg::with_name("decrease")
-                    .short("d")
+                    .short('d')
                     .long("decrease")
                     .help("If set will decrease volume by <NUM>")
                     .takes_value(false)
@@ -90,12 +89,12 @@ fn main() {
                     .value_name("NUM")
                     .required(true))
                 .arg(Arg::with_name("increase")
-                    .short("i")
+                    .short('i')
                     .long("increase")
                     .help("If set will increase speed by <NUM>")
                     .takes_value(false))
                 .arg(Arg::with_name("decrease")
-                    .short("d")
+                    .short('d')
                     .long("decrease")
                     .help("If set will decrease speed by <NUM>")
                     .takes_value(false)
@@ -162,12 +161,12 @@ fn main() {
                 .value_name("NUM")
                 .required(true))
             .arg(Arg::with_name("relative")
-                .short("r")
+                .short('r')
                 .long("relative")
                 .help("Seek relative to current position (a value with -n seeks backwards).")
                 .takes_value(false))
             .arg(Arg::with_name("absolute")
-                .short("a")
+                .short('a')
                 .long("absolute")
                 .help("Seek to a given time (a value with -n starts from the end of the file).")
                 .takes_value(false)
@@ -183,7 +182,7 @@ fn main() {
                 .takes_value(false)
                 .conflicts_with_all(&["relative", "absolute", "absolute-percent"]))
             .arg(Arg::with_name("negative")
-                .short("n")
+                .short('n')
                 .long("negative")
                 .help("Use with negative values of <NUM>")
                 .takes_value(false)))
@@ -201,7 +200,7 @@ fn main() {
                 .value_name("PROPERTIES")
                 .required(true))
                 .arg(Arg::with_name("hide-data")
-                    .short("h")
+                    .short('h')
                     .long("hide-data")
                     .help("Hides the new content of the observed property (useful for properties with a lot of data)")
                     .takes_value(false)))
@@ -241,7 +240,7 @@ fn main() {
                     .value_name("FILE")
                     .required(true))
                 .arg(Arg::with_name("mode")
-                    .short("m")
+                    .short('m')
                     .long("mode")
                     .possible_values(&["replace", "append"])
                     .hide_possible_values(true)
@@ -251,7 +250,7 @@ fn main() {
                     <append>: Append the file to the playlist.\n\n")
                     .takes_value(true))
                 .arg(Arg::with_name("type")
-                    .short("t")
+                    .short('t')
                     .long("type")
                     .possible_values(&["file", "playlist"])
                     .default_value("file")))
@@ -310,56 +309,56 @@ fn main() {
 
     // The user used the sub-command `pause`
     match matches.subcommand() {
-        ("pause", _) => {
+        Some(("pause", _)) => {
             if let Err(msg) = mpv.pause() {
                 error!("Error: {}", msg);
             }
         }
 
         // The user used the sub-command `toggle`
-        ("toggle", _) => {
+        Some(("toggle", _)) => {
             if let Err(msg) = mpv.toggle() {
                 error!("Error: {}", msg);
             }
         }
 
         // The user used the sub-command `pause`
-        ("next", _) => {
+        Some(("next", _)) => {
             if let Err(msg) = mpv.next() {
                 error!("Error: {}", msg);
             }
         }
 
         // The user used the sub-command `prev`
-        ("prev", _) => {
+        Some(("prev", _)) => {
             if let Err(msg) = mpv.prev() {
                 error!("Error: {}", msg);
             }
         }
 
         // The user used the sub-command `restart`
-        ("restart", _) => {
+        Some(("restart", _)) => {
             if let Err(msg) = mpv.restart() {
                 error!("Error: {}", msg);
             }
         }
 
         // The user used the sub-command `stop`
-        ("stop", _) => {
+        Some(("stop", _)) => {
             if let Err(msg) = mpv.stop() {
                 error!("Error: {}", msg);
             }
         }
 
         // The user used the sub-command `kill`
-        ("kill", _) => {
+        Some(("kill", _)) => {
             if let Err(msg) = mpv.kill() {
                 error!("Error: {}", msg);
             }
         }
 
         // The user used the sub-command `format`
-        ("format", Some(input)) => {
+        Some(("format", input)) => {
             let input_str = input.value_of("input").unwrap();
             let mut output_string = String::from(input_str);
 
@@ -513,9 +512,9 @@ fn main() {
         }
 
         // The user used the sub-command `get`
-        ("get", Some(get_matches)) => {
+        Some(("get", get_matches)) => {
             match get_matches.subcommand() {
-                ("property", Some(property_matches)) => {
+                Some(("property", property_matches)) => {
                     let property = property_matches.value_of("property").unwrap();
                     match mpv.get_property_string(property) {
                         Ok(value) => {
@@ -526,7 +525,7 @@ fn main() {
                     }
                 }
 
-                ("metadata", _) => {
+                Some(("metadata", _)) => {
                     match mpv.get_metadata() {
                         Ok(metadata) => {
                             if metadata.len() == 0 {
@@ -545,14 +544,14 @@ fn main() {
                     }
                 }
 
-                (_, _) => unreachable!(),
+                _ => unreachable!(),
             }
         }
 
         // The user used the sub-command `set`
-        ("set", Some(set_matches)) => {
+        Some(("set", set_matches)) => {
             match set_matches.subcommand() {
-                ("mute", Some(mute_matches)) => {
+                Some(("mute", mute_matches)) => {
                     match mute_matches.value_of("arg").unwrap() {
                         "on" => {
                             if let Err(msg) = mpv.set_mute(Switch::On) {
@@ -573,7 +572,7 @@ fn main() {
                     }
                 }
 
-                ("property", Some(property_matches)) => {
+                Some(("property", property_matches)) => {
                     let property = property_matches.value_of("property").unwrap();
                     let value = property_matches.value_of("value").unwrap();
                     if let Err(error_msg) = mpv.set_property(property, value.to_string()) {
@@ -581,7 +580,7 @@ fn main() {
                     }
                 }
 
-                ("volume", Some(volume_matches)) => {
+                Some(("volume", volume_matches)) => {
                     let num = volume_matches.value_of("num").unwrap();
                     if volume_matches.is_present("increase") {
                         if let Err(msg) = mpv.set_volume(
@@ -610,7 +609,7 @@ fn main() {
                     }
                 }
 
-                ("speed", Some(speed_matches)) => {
+                Some(("speed", speed_matches)) => {
                     let num = speed_matches.value_of("num").unwrap();
                     if speed_matches.is_present("increase") {
                         if let Err(msg) = mpv.set_speed(
@@ -639,7 +638,7 @@ fn main() {
                     }
                 }
 
-                ("loop-file", Some(loop_playlist_matches)) => {
+                Some(("loop-file", loop_playlist_matches)) => {
                     match loop_playlist_matches.value_of("arg").unwrap() {
                         "on" => {
                             if let Err(msg) = mpv.set_loop_file(Switch::On) {
@@ -660,7 +659,7 @@ fn main() {
                     }
                 }
 
-                ("loop-playlist", Some(loop_playlist_matches)) => {
+                Some(("loop-playlist", loop_playlist_matches)) => {
                     match loop_playlist_matches.value_of("arg").unwrap() {
                         "on" => {
                             if let Err(msg) = mpv.set_loop_playlist(Switch::On) {
@@ -681,12 +680,12 @@ fn main() {
                     }
                 }
 
-                (_, _) => unreachable!(),
+                _ => unreachable!(),
             }
         }
 
         // The user used the sub-command `seek`
-        ("seek", Some(seek_matches)) => {
+        Some(("seek", seek_matches)) => {
             let num = seek_matches.value_of("num").unwrap();
             let mut n: f64 = num.parse().expect("Parse f64");
             if seek_matches.is_present("negative") {
@@ -711,9 +710,9 @@ fn main() {
         }
 
         // The user used the sub-command `events`
-        ("events", Some(events_matches)) => {
+        Some(("events", events_matches)) => {
             match events_matches.subcommand() {
-                ("wait-for", Some(wait_for_matches)) => {
+                Some(("wait-for", wait_for_matches)) => {
                     let watched_event = wait_for_matches.value_of("event").unwrap();
                     let mut mpv = mpv;
                     loop {
@@ -730,7 +729,7 @@ fn main() {
                         }
                     }
                 }
-                ("show", _) => {
+                Some(("show", _)) => {
                     let mut mpv = mpv;
                     loop {
                         match mpv.event_listen() {
@@ -744,7 +743,7 @@ fn main() {
                     }
                 }
 
-                ("observe", Some(observe_matches)) => {
+                Some(("observe", observe_matches)) => {
                     let observed_properties = observe_matches.value_of("properties").unwrap();
                     let props: Vec<&str> = observed_properties.split(',').collect();
                     for (i, property) in props.iter().enumerate() {
@@ -818,7 +817,7 @@ fn main() {
                     }
                 }
 
-                ("raw", _) => {
+                Some(("raw", _)) => {
                     mpv.observe_property(&99isize, "duration").unwrap();
                     let mut mpv = mpv;
                     loop {
@@ -828,14 +827,14 @@ fn main() {
                     }
                 }
 
-                (_, _) => unreachable!(),
+                _ => unreachable!(),
             }
         }
 
         // The user used the sub-command `playlist`
-        ("playlist", Some(playlist_matches)) => {
+        Some(("playlist", playlist_matches)) => {
             match playlist_matches.subcommand() {
-                ("add", Some(add_matches)) => {
+                Some(("add", add_matches)) => {
                     let file = add_matches.value_of("file").unwrap();
                     let file_type = match add_matches.value_of("type").unwrap() {
                         "file" => PlaylistAddTypeOptions::File,
@@ -868,19 +867,19 @@ fn main() {
                     }
                 }
 
-                ("shuffle", _) => {
+                Some(("shuffle", _)) => {
                     if let Err(msg) = mpv.playlist_shuffle() {
                         error!("Error: {}", msg);
                     }
                 }
 
-                ("clear", _) => {
+                Some(("clear", _)) => {
                     if let Err(msg) = mpv.playlist_clear() {
                         error!("Error: {}", msg);
                     }
                 }
 
-                ("remove-id", Some(remove_id_matches)) => {
+                Some(("remove-id", remove_id_matches)) => {
                     if let Err(msg) = mpv.playlist_remove_id(
                         remove_id_matches
                             .value_of("id")
@@ -893,7 +892,7 @@ fn main() {
                     }
                 }
 
-                ("move-id", Some(move_id_matches)) => {
+                Some(("move-id", move_id_matches)) => {
                     if let Err(msg) = mpv.playlist_move_id(
                         move_id_matches
                             .value_of("from")
@@ -911,7 +910,7 @@ fn main() {
                     }
                 }
 
-                ("play-id-next", Some(play_next_matches)) => {
+                Some(("play-id-next", play_next_matches)) => {
                     if let Err(msg) = mpv.playlist_play_next(
                         play_next_matches
                             .value_of("id")
@@ -924,7 +923,7 @@ fn main() {
                     }
                 }
 
-                ("play-id", Some(play_id_matches)) => {
+                Some(("play-id", play_id_matches)) => {
                     if let Err(msg) = mpv.playlist_play_id(
                         play_id_matches
                             .value_of("id")
@@ -937,7 +936,7 @@ fn main() {
                     }
                 }
 
-                ("reverse", _) => {
+                Some(("reverse", _)) => {
                     if let Ok(playlist) = mpv.get_playlist() {
                         let Playlist(entries) = playlist;
                         let mut i = 0usize;
@@ -951,7 +950,7 @@ fn main() {
                     }
                 }
 
-                ("show", _) => {
+                Some(("show", _)) => {
                     //Show the playlist
                     if let Ok(playlist) = mpv.get_playlist() {
                         let Playlist(entries) = playlist;
@@ -973,11 +972,11 @@ fn main() {
                     }
                 }
 
-                (_, _) => unreachable!(),
+                _ => unreachable!(),
             }
         }
 
-        (_, _) => unreachable!(),
+        _ => unreachable!(),
     }
 
     //mpv.disconnect();

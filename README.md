@@ -8,7 +8,7 @@ It uses subcommands to control any mpv instance over a given socket.
 
 Make sure mpv is started with the following option:
 `
-$ mpv --input-ipc-server=/tmp/mpvsocket ...
+$ mpv --input-ipc-server=/tmp/mpv.sock ...
 `
 
 ## Dependencies
@@ -18,8 +18,8 @@ $ mpv --input-ipc-server=/tmp/mpvsocket ...
 
 ## Install
 
-- [Arch](https://aur.archlinux.org/packages/mpvc-rs) - `yaourt mpvc-rs`
-- [Gentoo](https://github.com/winny-/winny-overlay) - `layman -o https://raw.githubusercontent.com/winny-/winny-overlay/master/overlay.xml -f -a winny && emerge -av media-sound/mpvc`
+- Arch ([AUR](https://aur.archlinux.org/packages/mpvc-rs)) - `yay mpvc-rs`
+- Gentoo ([GURU](https://github.com/gentoo/guru/tree/master/media-sound/mpvc) - `emerge -av media-sound/mpvc`
 
 If you have packaged mpvc for your distribution, let me know so I can add it here.
 
@@ -32,21 +32,11 @@ The output binary will be found in 'target/release/'
 
 Make sure mpv is started with the following option:
 `
-$ mpv --input-ipc-server=/tmp/mpvsocket --idle
+$ mpv --input-ipc-server=/tmp/mpv.sock --idle
 `
 
 At the moment mpvc does not launch mpv instances, so the instances have to be launched beforehand.
 I'm not sure yet where to go with this project so this might change in the future.
-
-#### mps-youtube
-
-mpvc can be used with mps-youtube. In order to use mpvc with mpsyt you have to set the following option in mpsyt:
-
-`set download_command mpvc playlist add --mode=append https://youtu.be/%i#%f`
-
-Then use it as follows:
-
-`da 1-5`
 
 ## BUGS / IDEAS
 
