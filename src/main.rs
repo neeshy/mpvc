@@ -200,7 +200,7 @@ fn main() {
                 .value_name("PROPERTIES")
                 .required(true))
                 .arg(Arg::with_name("hide-data")
-                    .short('h')
+                    .short('H')
                     .long("hide-data")
                     .help("Hides the new content of the observed property (useful for properties with a lot of data)")
                     .takes_value(false)))
@@ -488,7 +488,7 @@ fn main() {
                     }
 
                     if input_str.contains("%position%") {
-                        match mpv.get_property::<String>("playlist-pos") {
+                        match mpv.get_property_string("playlist-pos") {
                             Ok(position) => {
                                 output_string = output_string.replace("%position%", &position);
                             }
@@ -497,7 +497,7 @@ fn main() {
                     }
 
                     if input_str.contains("%playlistlength%") {
-                        match mpv.get_property::<String>("playlist-count") {
+                        match mpv.get_property_string("playlist-count") {
                             Ok(playlist_count) => {
                                 output_string =
                                     output_string.replace("%playlistlength%", &playlist_count);
@@ -747,7 +747,7 @@ fn main() {
                     let observed_properties = observe_matches.value_of("properties").unwrap();
                     let props: Vec<&str> = observed_properties.split(',').collect();
                     for (i, property) in props.iter().enumerate() {
-                        mpv.observe_property(&(i as isize + 1), property).unwrap();
+                        mpv.observe_property(i as usize + 1, property).unwrap();
                     }
                     let mut mpv = mpv;
                     loop {
@@ -757,52 +757,52 @@ fn main() {
                                     if observe_matches.is_present("hide-data") {
                                         match property {
                                             Property::Duration(_) => {
-                                                println!("PropertyChange (name=duration, id={}", id)
+                                                println!("PropertyChange (name=duration, id={})", id)
                                             }
                                             Property::Metadata(_) => {
-                                                println!("PropertyChange (name=metadata, id={}", id)
+                                                println!("PropertyChange (name=metadata, id={})", id)
                                             }
                                             Property::Path(_) => {
-                                                println!("PropertyChange (name=property, id={}", id)
+                                                println!("PropertyChange (name=property, id={})", id)
                                             }
                                             Property::Pause(_) => {
-                                                println!("PropertyChange (name=pause, id={}", id)
+                                                println!("PropertyChange (name=pause, id={})", id)
                                             }
                                             Property::PlaybackTime(_) => {
-                                                println!("PropertyChange (name=pause, id={}", id)
+                                                println!("PropertyChange (name=pause, id={})", id)
                                             }
                                             Property::Unknown { name, data: _ } => {
-                                                println!("PropertyChange (name={}, id={}", name, id)
+                                                println!("PropertyChange (name={}, id={})", name, id)
                                             }
                                         }
                                     } else {
                                         match property {
                                             Property::Duration(duration) => println!(
-                                                "PropertyChange (name=duration, id={}, data={:?}",
+                                                "PropertyChange (name=duration, id={}, data={:?})",
                                                 id,
                                                 duration
                                             ),
                                             Property::Metadata(metadata) => println!(
-                                                "PropertyChange (name=metadata, id={}, data={:?}",
+                                                "PropertyChange (name=metadata, id={}, data={:?})",
                                                 id,
                                                 metadata
                                             ),
                                             Property::Path(path) => println!(
-                                                "PropertyChange (name=property, id={}, data={:?}",
+                                                "PropertyChange (name=property, id={}, data={:?})",
                                                 id,
                                                 path
                                             ),
                                             Property::Pause(paused) => println!(
-                                                "PropertyChange (name=pause, id={}, data={}",
+                                                "PropertyChange (name=pause, id={}, data={})",
                                                 id, paused
                                             ),
                                             Property::PlaybackTime(playback_time) => println!(
-                                                "PropertyChange (name=playback-time, id={}, data={:?}",
+                                                "PropertyChange (name=playback-time, id={}, data={:?})",
                                                 id,
                                                 playback_time
                                             ),
                                             Property::Unknown { name, data } => println!(
-                                                "PropertyChange (name={}, id={}, data={:?}",
+                                                "PropertyChange (name={}, id={}, data={:?})",
                                                 name, id, data
                                             ),
                                         }
@@ -818,7 +818,7 @@ fn main() {
                 }
 
                 Some(("raw", _)) => {
-                    mpv.observe_property(&99isize, "duration").unwrap();
+                    mpv.observe_property(99usize, "duration").unwrap();
                     let mut mpv = mpv;
                     loop {
                         let event = mpv.event_listen_raw();

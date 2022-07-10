@@ -19,7 +19,7 @@ $ mpv --input-ipc-server=/tmp/mpv.sock ...
 ## Install
 
 - Arch ([AUR](https://aur.archlinux.org/packages/mpvc-rs)) - `yay mpvc-rs`
-- Gentoo ([GURU](https://github.com/gentoo/guru/tree/master/media-sound/mpvc) - `emerge -av media-sound/mpvc`
+- Gentoo ([GURU](https://github.com/gentoo/guru/tree/master/media-sound/mpvc)) - `emerge -av media-sound/mpvc`
 
 If you have packaged mpvc for your distribution, let me know so I can add it here.
 
