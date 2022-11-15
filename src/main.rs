@@ -1,9 +1,9 @@
 extern crate clap;
 
-extern crate serde;
-extern crate serde_json;
 extern crate colored;
 extern crate mpvipc;
+extern crate serde;
+extern crate serde_json;
 
 #[macro_use]
 mod macros;
@@ -15,7 +15,6 @@ use colored::*;
 use mpvipc::*;
 
 fn main() {
-
     let matches = Command::new(env!("CARGO_CRATE_NAME"))
         .setting(AppSettings::SubcommandRequiredElseHelp)
         .arg(Arg::with_name("socket")
@@ -512,177 +511,157 @@ fn main() {
         }
 
         // The user used the sub-command `get`
-        Some(("get", get_matches)) => {
-            match get_matches.subcommand() {
-                Some(("property", property_matches)) => {
-                    let property = property_matches.value_of("property").unwrap();
-                    match mpv.get_property_string(property) {
-                        Ok(value) => {
-                            println!("{}", value);
-                            exit(0);
-                        }
-                        Err(msg) => error!("Error: {}", msg),
+        Some(("get", get_matches)) => match get_matches.subcommand() {
+            Some(("property", property_matches)) => {
+                let property = property_matches.value_of("property").unwrap();
+                match mpv.get_property_string(property) {
+                    Ok(value) => {
+                        println!("{}", value);
+                        exit(0);
                     }
+                    Err(msg) => error!("Error: {}", msg),
                 }
+            }
 
-                Some(("metadata", _)) => {
-                    match mpv.get_metadata() {
-                        Ok(metadata) => {
-                            if metadata.len() == 0 {
-                                println!("File has no metadata");
+            Some(("metadata", _)) => match mpv.get_metadata() {
+                Ok(metadata) => {
+                    if metadata.len() == 0 {
+                        println!("File has no metadata");
+                    } else {
+                        for (key, value) in metadata.iter() {
+                            if let MpvDataType::String(ref v) = *value {
+                                println!("{}: {}", key, v);
                             } else {
-                                for (key, value) in metadata.iter() {
-                                    if let MpvDataType::String(ref v) = *value {
-                                        println!("{}: {}", key, v);
-                                    } else {
-                                        println!("{}: {:?}", key, value);
-                                    }
-                                }
+                                println!("{}: {:?}", key, value);
                             }
                         }
-                        Err(why) => error!("Error: {}", why),
                     }
                 }
+                Err(why) => error!("Error: {}", why),
+            },
 
-                _ => unreachable!(),
-            }
-        }
+            _ => unreachable!(),
+        },
 
         // The user used the sub-command `set`
-        Some(("set", set_matches)) => {
-            match set_matches.subcommand() {
-                Some(("mute", mute_matches)) => {
-                    match mute_matches.value_of("arg").unwrap() {
-                        "on" => {
-                            if let Err(msg) = mpv.set_mute(Switch::On) {
-                                error!("Error: {}", msg);
-                            }
-                        }
-                        "off" => {
-                            if let Err(msg) = mpv.set_mute(Switch::Off) {
-                                error!("Error: {}", msg);
-                            }
-                        }
-                        "toggle" => {
-                            if let Err(msg) = mpv.set_mute(Switch::Toggle) {
-                                error!("Error: {}", msg);
-                            }
-                        }
-                        _ => unreachable!(),
+        Some(("set", set_matches)) => match set_matches.subcommand() {
+            Some(("mute", mute_matches)) => match mute_matches.value_of("arg").unwrap() {
+                "on" => {
+                    if let Err(msg) = mpv.set_mute(Switch::On) {
+                        error!("Error: {}", msg);
                     }
                 }
-
-                Some(("property", property_matches)) => {
-                    let property = property_matches.value_of("property").unwrap();
-                    let value = property_matches.value_of("value").unwrap();
-                    if let Err(error_msg) = mpv.set_property(property, value.to_string()) {
-                        error!("Error: {}", error_msg);
+                "off" => {
+                    if let Err(msg) = mpv.set_mute(Switch::Off) {
+                        error!("Error: {}", msg);
                     }
                 }
-
-                Some(("volume", volume_matches)) => {
-                    let num = volume_matches.value_of("num").unwrap();
-                    if volume_matches.is_present("increase") {
-                        if let Err(msg) = mpv.set_volume(
-                            num.parse::<f64>().unwrap(),
-                            NumberChangeOptions::Increase,
-                        )
-                        {
-                            error!("Error: {}", msg);
-                        }
-                    } else if volume_matches.is_present("decrease") {
-                        if let Err(msg) = mpv.set_volume(
-                            num.parse::<f64>().unwrap(),
-                            NumberChangeOptions::Decrease,
-                        )
-                        {
-                            error!("Error: {}", msg);
-                        }
-                    } else {
-                        if let Err(msg) = mpv.set_volume(
-                            num.parse::<f64>().unwrap(),
-                            NumberChangeOptions::Absolute,
-                        )
-                        {
-                            error!("Error: {}", msg);
-                        }
+                "toggle" => {
+                    if let Err(msg) = mpv.set_mute(Switch::Toggle) {
+                        error!("Error: {}", msg);
                     }
                 }
-
-                Some(("speed", speed_matches)) => {
-                    let num = speed_matches.value_of("num").unwrap();
-                    if speed_matches.is_present("increase") {
-                        if let Err(msg) = mpv.set_speed(
-                            num.parse::<f64>().unwrap(),
-                            NumberChangeOptions::Increase,
-                        )
-                        {
-                            error!("Error: {}", msg);
-                        }
-                    } else if speed_matches.is_present("decrease") {
-                        if let Err(msg) = mpv.set_speed(
-                            num.parse::<f64>().unwrap(),
-                            NumberChangeOptions::Decrease,
-                        )
-                        {
-                            error!("Error: {}", msg);
-                        }
-                    } else {
-                        if let Err(msg) = mpv.set_speed(
-                            num.parse::<f64>().unwrap(),
-                            NumberChangeOptions::Absolute,
-                        )
-                        {
-                            error!("Error: {}", msg);
-                        }
-                    }
-                }
-
-                Some(("loop-file", loop_playlist_matches)) => {
-                    match loop_playlist_matches.value_of("arg").unwrap() {
-                        "on" => {
-                            if let Err(msg) = mpv.set_loop_file(Switch::On) {
-                                error!("Error: {}", msg);
-                            }
-                        }
-                        "off" => {
-                            if let Err(msg) = mpv.set_loop_file(Switch::Off) {
-                                error!("Error: {}", msg);
-                            }
-                        }
-                        "toggle" => {
-                            if let Err(msg) = mpv.set_loop_file(Switch::Toggle) {
-                                error!("Error: {}", msg);
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-
-                Some(("loop-playlist", loop_playlist_matches)) => {
-                    match loop_playlist_matches.value_of("arg").unwrap() {
-                        "on" => {
-                            if let Err(msg) = mpv.set_loop_playlist(Switch::On) {
-                                error!("Error: {}", msg);
-                            }
-                        }
-                        "off" => {
-                            if let Err(msg) = mpv.set_loop_playlist(Switch::Off) {
-                                error!("Error: {}", msg);
-                            }
-                        }
-                        "toggle" => {
-                            if let Err(msg) = mpv.set_loop_playlist(Switch::Toggle) {
-                                error!("Error: {}", msg);
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
-                }
-
                 _ => unreachable!(),
+            },
+
+            Some(("property", property_matches)) => {
+                let property = property_matches.value_of("property").unwrap();
+                let value = property_matches.value_of("value").unwrap();
+                if let Err(error_msg) = mpv.set_property(property, value.to_string()) {
+                    error!("Error: {}", error_msg);
+                }
             }
-        }
+
+            Some(("volume", volume_matches)) => {
+                let num = volume_matches.value_of("num").unwrap();
+                if volume_matches.is_present("increase") {
+                    if let Err(msg) =
+                        mpv.set_volume(num.parse::<f64>().unwrap(), NumberChangeOptions::Increase)
+                    {
+                        error!("Error: {}", msg);
+                    }
+                } else if volume_matches.is_present("decrease") {
+                    if let Err(msg) =
+                        mpv.set_volume(num.parse::<f64>().unwrap(), NumberChangeOptions::Decrease)
+                    {
+                        error!("Error: {}", msg);
+                    }
+                } else {
+                    if let Err(msg) =
+                        mpv.set_volume(num.parse::<f64>().unwrap(), NumberChangeOptions::Absolute)
+                    {
+                        error!("Error: {}", msg);
+                    }
+                }
+            }
+
+            Some(("speed", speed_matches)) => {
+                let num = speed_matches.value_of("num").unwrap();
+                if speed_matches.is_present("increase") {
+                    if let Err(msg) =
+                        mpv.set_speed(num.parse::<f64>().unwrap(), NumberChangeOptions::Increase)
+                    {
+                        error!("Error: {}", msg);
+                    }
+                } else if speed_matches.is_present("decrease") {
+                    if let Err(msg) =
+                        mpv.set_speed(num.parse::<f64>().unwrap(), NumberChangeOptions::Decrease)
+                    {
+                        error!("Error: {}", msg);
+                    }
+                } else {
+                    if let Err(msg) =
+                        mpv.set_speed(num.parse::<f64>().unwrap(), NumberChangeOptions::Absolute)
+                    {
+                        error!("Error: {}", msg);
+                    }
+                }
+            }
+
+            Some(("loop-file", loop_playlist_matches)) => {
+                match loop_playlist_matches.value_of("arg").unwrap() {
+                    "on" => {
+                        if let Err(msg) = mpv.set_loop_file(Switch::On) {
+                            error!("Error: {}", msg);
+                        }
+                    }
+                    "off" => {
+                        if let Err(msg) = mpv.set_loop_file(Switch::Off) {
+                            error!("Error: {}", msg);
+                        }
+                    }
+                    "toggle" => {
+                        if let Err(msg) = mpv.set_loop_file(Switch::Toggle) {
+                            error!("Error: {}", msg);
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
+            Some(("loop-playlist", loop_playlist_matches)) => {
+                match loop_playlist_matches.value_of("arg").unwrap() {
+                    "on" => {
+                        if let Err(msg) = mpv.set_loop_playlist(Switch::On) {
+                            error!("Error: {}", msg);
+                        }
+                    }
+                    "off" => {
+                        if let Err(msg) = mpv.set_loop_playlist(Switch::Off) {
+                            error!("Error: {}", msg);
+                        }
+                    }
+                    "toggle" => {
+                        if let Err(msg) = mpv.set_loop_playlist(Switch::Toggle) {
+                            error!("Error: {}", msg);
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+
+            _ => unreachable!(),
+        },
 
         // The user used the sub-command `seek`
         Some(("seek", seek_matches)) => {
@@ -747,7 +726,7 @@ fn main() {
                     let observed_properties = observe_matches.value_of("properties").unwrap();
                     let props: Vec<&str> = observed_properties.split(',').collect();
                     for (i, property) in props.iter().enumerate() {
-                        mpv.observe_property(i as usize + 1, property).unwrap();
+                        mpv.observe_property(i as isize + 1, property).unwrap();
                     }
                     let mut mpv = mpv;
                     loop {
@@ -757,13 +736,22 @@ fn main() {
                                     if observe_matches.is_present("hide-data") {
                                         match property {
                                             Property::Duration(_) => {
-                                                println!("PropertyChange (name=duration, id={})", id)
+                                                println!(
+                                                    "PropertyChange (name=duration, id={})",
+                                                    id
+                                                )
                                             }
                                             Property::Metadata(_) => {
-                                                println!("PropertyChange (name=metadata, id={})", id)
+                                                println!(
+                                                    "PropertyChange (name=metadata, id={})",
+                                                    id
+                                                )
                                             }
                                             Property::Path(_) => {
-                                                println!("PropertyChange (name=property, id={})", id)
+                                                println!(
+                                                    "PropertyChange (name=property, id={})",
+                                                    id
+                                                )
                                             }
                                             Property::Pause(_) => {
                                                 println!("PropertyChange (name=pause, id={})", id)
@@ -772,7 +760,10 @@ fn main() {
                                                 println!("PropertyChange (name=pause, id={})", id)
                                             }
                                             Property::Unknown { name, data: _ } => {
-                                                println!("PropertyChange (name={}, id={})", name, id)
+                                                println!(
+                                                    "PropertyChange (name={}, id={})",
+                                                    name, id
+                                                )
                                             }
                                         }
                                     } else {
@@ -813,12 +804,11 @@ fn main() {
                                 error!("Error: {}", msg);
                             }
                         }
-
                     }
                 }
 
                 Some(("raw", _)) => {
-                    mpv.observe_property(99usize, "duration").unwrap();
+                    mpv.observe_property(99isize, "duration").unwrap();
                     let mut mpv = mpv;
                     loop {
                         let event = mpv.event_listen_raw();
@@ -843,22 +833,16 @@ fn main() {
                     };
                     match add_matches.value_of("mode").unwrap() {
                         "replace" => {
-                            if let Err(msg) = mpv.playlist_add(
-                                file,
-                                file_type,
-                                PlaylistAddOptions::Replace,
-                            )
+                            if let Err(msg) =
+                                mpv.playlist_add(file, file_type, PlaylistAddOptions::Replace)
                             {
                                 error!("Error: {}", msg);
                             }
                         }
 
                         "append" => {
-                            if let Err(msg) = mpv.playlist_add(
-                                file,
-                                file_type,
-                                PlaylistAddOptions::Append,
-                            )
+                            if let Err(msg) =
+                                mpv.playlist_add(file, file_type, PlaylistAddOptions::Append)
                             {
                                 error!("Error: {}", msg);
                             }
@@ -886,8 +870,7 @@ fn main() {
                             .unwrap()
                             .parse::<usize>()
                             .unwrap(),
-                    )
-                    {
+                    ) {
                         error!("Error: {}", msg);
                     }
                 }
@@ -904,8 +887,7 @@ fn main() {
                             .unwrap()
                             .parse::<usize>()
                             .unwrap(),
-                    )
-                    {
+                    ) {
                         error!("Error: {}", msg);
                     }
                 }
@@ -917,8 +899,7 @@ fn main() {
                             .unwrap()
                             .parse::<usize>()
                             .unwrap(),
-                    )
-                    {
+                    ) {
                         error!("Error: {}", msg);
                     }
                 }
@@ -930,8 +911,7 @@ fn main() {
                             .unwrap()
                             .parse::<usize>()
                             .unwrap(),
-                    )
-                    {
+                    ) {
                         error!("Error: {}", msg);
                     }
                 }
@@ -941,7 +921,7 @@ fn main() {
                         let Playlist(entries) = playlist;
                         let mut i = 0usize;
                         while i < entries.len() {
-                            if let Err(msg) = mpv.playlist_move_id((entries.len() -1) as usize, i)
+                            if let Err(msg) = mpv.playlist_move_id((entries.len() - 1) as usize, i)
                             {
                                 error!("Error: {}", msg);
                             }
