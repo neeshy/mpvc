@@ -2,9 +2,9 @@ extern crate log;
 extern crate serde;
 extern crate serde_json;
 
-use std::fmt::{self, Display};
+use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::io::prelude::*;
-use std::io::{BufReader, Read};
+use std::io::BufReader;
 use std::os::unix::net::UnixStream;
 
 use log::debug;
@@ -19,15 +19,15 @@ pub struct Mpv {
     counter: i64,
 }
 
-impl Drop for Mpv {
-    fn drop(&mut self) {
-        self._disconnect();
+impl Debug for Mpv {
+    fn fmt(&self, fmt: &mut Formatter<'_>) -> FmtResult {
+        fmt.debug_tuple("Mpv").field(&self.name).finish()
     }
 }
 
-impl fmt::Debug for Mpv {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt.debug_tuple("Mpv").field(&self.name).finish()
+impl Drop for Mpv {
+    fn drop(&mut self) {
+        self._disconnect();
     }
 }
 
@@ -72,7 +72,7 @@ pub enum Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
             Error::ConnectError(ref msg) => f.write_str(&format!("ConnectError: {}", msg)),
             Error::ReadError(ref msg) => f.write_str(&format!("ReadError: {}", msg)),
