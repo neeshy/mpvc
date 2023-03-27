@@ -100,12 +100,7 @@ impl Mpv {
     }
 
     fn _disconnect(&mut self) {
-        let mut stream = &self.stream;
-        stream.shutdown(std::net::Shutdown::Both).expect("socket disconnect");
-        let mut buffer = [0; 32];
-        for _ in 0..stream.bytes().count() {
-            stream.read_exact(&mut buffer[..]).unwrap();
-        }
+        self.stream.shutdown(std::net::Shutdown::Both).expect("socket disconnect");
     }
 
     pub fn disconnect(mut self) {
@@ -117,7 +112,8 @@ impl Mpv {
         let v = json!({ "command": command, "request_id": self.counter });
         let c = &(v.to_string() + "\n");
         debug!("Command: {}", c.trim_end());
-        self.stream.write_all(c.as_bytes()).map_err(|why| Error::WriteError(why.to_string()))?;
+        self.stream.write_all(c.as_bytes())
+            .map_err(|why| Error::WriteError(why.to_string()))?;
         loop {
             let mut response = String::new();
             self.reader.read_line(&mut response)
