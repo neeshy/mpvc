@@ -25,123 +25,21 @@ fn main() -> Result<(), Error> {
             .short('S')
             .long("socket")
             .value_name("/path/to/socket")
-            .help("Specifies the path to the socket")
             .default_value("/tmp/mpv.sock")
             .num_args(1))
-        .subcommand(Command::new("get")
-            .about("Gets information from mpv and prints them. See --help for available subcommands.")
-            .subcommand_required(true)
-            .arg_required_else_help(true)
-            .subcommand(Command::new("property")
-                .about("<PROPERTY>\n\
-                Retrieves a mpv property (see property 'property-list' for possible values)")
-                .arg(Arg::new("property")
-                    .help("Property that should be retrieved")
-                    .required(true)))
-            .subcommand(Command::new("metadata")
-                .about("<METADATA>\n\
-                Retrieves a metadata attribute from the currently playing file")
-                .arg(Arg::new("metadata")
-                    .help("Metadata attribute that should be retrieved")
-                    .required(true))))
-        .subcommand(Command::new("set")
-            .about("Set settings for mpv. See --help for available subcommands.")
-            .subcommand_required(true)
-            .arg_required_else_help(true)
-            .subcommand(Command::new("property")
-                .about("<PROPERTY> <VALUE>\n\
-                Sets a mpv property to <VALUE>")
-                .arg(Arg::new("property")
-                    .help("Property that should be set")
-                    .required(true))
-                .arg(Arg::new("value")
-                    .help("Value to be set")
-                    .required(true)))
-            .subcommand(Command::new("mute")
-                .about("<ON|OFF|TOGGLE>\n\
-                Controls whether audio output is muted.")
-                .arg(Arg::new("arg")
-                    .value_name("on|off|toggle")
-                    .value_parser(["on", "off", "toggle"])
-                    .help("Defines if muting audio is enabled or disabled")
-                    .required(true)))
-            .subcommand(Command::new("volume")
-                .about("[OPTIONS] <NUM>\n\
-                Sets the volume to <NUM> (0-100). \
-                Use with --mode relative to increase or decrease the volume")
-                .arg(Arg::new("num")
-                    .value_name("NUM")
-                    .required(true))
-                .arg(Arg::new("mode")
-                    .short('m')
-                    .long("mode")
-                    .value_parser(["absolute", "relative"])
-                    .hide_possible_values(true)
-                    .default_value("absolute")
-                    .help("<absolute|relative>\n\
-                    <absolute>: Set the volume.\n\
-                    <relative>: Change the volume relatively. To decrease, use negative values for <NUM>.\n\n")
-                    .num_args(1)))
-            .subcommand(Command::new("loop-file")
-                .about("<ON|OFF|TOGGLE>\n\
-                Controls whether the current file should be repeatet after playback.")
-                .arg(Arg::new("arg")
-                    .value_name("on|off|toggle")
-                    .value_parser(["on", "off", "toggle"])
-                    .help("Defines if looping current file is enabled or disabled")
-                    .required(true)))
-            .subcommand(Command::new("loop-playlist")
-                .about("<ON|OFF|TOGGLE>\n\
-                Controls whether the playlist should be repeatet after the end is reached.")
-                .arg(Arg::new("arg")
-                    .value_name("on|off|toggle")
-                    .value_parser(["on", "off", "toggle"])
-                    .help("Defines if looping playlist is enabled or disabled")
-                    .required(true))))
         .subcommand(Command::new("play")
-            .about("Resumes playing"))
+            .about("Resume playback"))
         .subcommand(Command::new("pause")
-            .about("Pauses playing"))
+            .about("Pause playback"))
         .subcommand(Command::new("toggle")
-            .about("Toggles between play and pause. \
-            If stopped starts playing. Does not support start playing \
-            at song number (use play)."))
+            .about("Toggles between play and pause"))
         .subcommand(Command::new("next")
-            .about("Starts playing next file on playlist"))
+            .about("Starts playing the next file in the playlist"))
         .subcommand(Command::new("prev")
-            .about("Starts playing previous file on playlist"))
-        .subcommand(Command::new("restart")
-            .about("Restarting playback of current file (same as 'seek -a 0')"))
-        .subcommand(Command::new("kill")
-            .about("Kill the mpv process controlling the socket"))
-        .subcommand(Command::new("format")
-                .about("Replaces the following arguments with their real-time values from mpv. \n\
-                        Use with \"\" for multiple arguments.\n\n\
-                        %filename%, %path%, %title%, %artist%, %album%, %album_artist%, %composer%, %genre%, %year%, %comment%, \
-                        %track%, %disc%, %playlistlength%, %position%\n\n\
-                        EXAMPLE: format \"%artist% - %title% (%album%)\"")
-                .arg(Arg::new("input")
-                    .value_name("INPUT-STRING")
-                    .help("%filename%: \n\
-                        %path%: \n\
-                        %title%: \n\
-                        %artist%: \n\
-                        %album%: \n\
-                        %album_artist%: \n\
-                        %composer%: \n\
-                        %genre%: \n\
-                        %year%: \n\
-                        %comment%: \n\
-                        %track%: \n\
-                        %disc%: \n\
-                        %playlistlength%: \n\
-                        %position%: ")
-                    .required(true)))
+            .about("Starts playing the previous file in the playlist"))
         .subcommand(Command::new("seek")
-            .about("[OPTIONS] <NUM>\n\
-            Change the playback position. By default, \
-            seeks by a relative amount of seconds. You may use negative values. \
-            See -h for more options.")
+            .about("Set the playback position. By default seeks by a relative amount of seconds. \
+                   You may use negative values.")
             .arg(Arg::new("num")
                 .value_name("NUM")
                 .required(true))
@@ -155,107 +53,163 @@ fn main() -> Result<(), Error> {
                 <relative>: Seek relative to current position (a negative value seeks backwards).\n\
                 <absolute>: Seek to a given time (a negataive value starts from the end of the file).\n\
                 <absolute-percent>: Seek to a given percent position.\n\
-                <relative-percent>: Seek relative to current position in percent.\n\n")
+                <relative-percent>: Seek relative to current position in percent.\n")
                 .num_args(1)))
-        .subcommand(Command::new("events")
-            .about("Event related commands. See --help for available subcommands.")
-            .subcommand_required(true)
-            .arg_required_else_help(true)
-            .subcommand(Command::new("observe")
-                .about("<PROPERTIES>\n\
-                Prints all mpv events in real-time. Additionally, observes a set of properties and informs about changes.")
-                .arg(Arg::new("property")
-                    .value_name("PROPERTY")
-                    .num_args(0..)))
-            .subcommand(Command::new("wait-for")
-                .about("<EVENT>\n\
-                Runs until the mpv event <EVENT> is triggered, or until the mpv property <PROPERTY> is changed.
-                See --help for possible events.")
-                .arg_required_else_help(true)
-                .arg(Arg::new("event")
-                    .value_name("EVENT")
-                    .value_parser([
-                        "start-file",
-                        "end-file",
-                        "file-loaded",
-                        "seek",
-                        "playback-restart",
-                        "shutdown",
-                        "video-reconfig",
-                        "audio-reconfig"])
-                    .num_args(1..))
-                .arg(Arg::new("property")
-                    .value_name("PROPERTY")
-                    .num_args(1..)
-                    .last(true))))
-        .subcommand(Command::new("stop")
-            .about("Stop playback and clear playlist."))
+        .subcommand(Command::new("restart")
+            .about("Restart playback of the current file (equivalent to 'seek -m absolute 0')"))
+        .subcommand(Command::new("kill")
+            .about("Kill the mpv process controlling the socket"))
+        .subcommand(Command::new("add")
+            .about("Load the given file or playlist and play it")
+            .visible_alias("load")
+            .arg(Arg::new("file")
+                .value_name("FILE")
+                .num_args(1..)
+                .required(true))
+            .arg(Arg::new("mode")
+                .short('m')
+                .long("mode")
+                .value_parser(["replace", "append", "append-play"])
+                .hide_possible_values(true)
+                .default_value("append-play")
+                .help("<replace|append|append-play>\n\
+                <replace>: Stop playback of the current file, and play the new file immediately.\n\
+                <append>: Append the file to the playlist.\n\
+                <append-play>: Append the file, and if nothing is currently playing, start playback.\n")
+                .num_args(1))
+            .arg(Arg::new("type")
+                .short('t')
+                .long("type")
+                .value_parser(["file", "playlist"])
+                .default_value("file")))
         .subcommand(Command::new("playlist")
-            .about("Playlist related commands. See --help for available subcommands")
-            .subcommand_required(true)
+            .about("Prints the playlist"))
+        .subcommand(Command::new("stop")
+            .about("Stop playback and clear playlist"))
+        .subcommand(Command::new("clear")
+            .about("Clear the playlist, except the currently playing file"))
+        .subcommand(Command::new("remove")
+            .about("Removes <ID> from the 0-indexed playlist. If <ID> is currently playing, playback will stop.")
+            .visible_alias("rm")
+            .arg(Arg::new("id")
+                .value_name("ID")
+                .required(true)))
+        .subcommand(Command::new("move")
+            .about("Moves the playlist entry at position <FROM> to position <TO>")
+            .visible_alias("mv")
+            .arg(Arg::new("from")
+                .value_name("FROM")
+                .required(true))
+            .arg(Arg::new("to")
+                .value_name("TO")
+                .required(true)))
+        .subcommand(Command::new("play-next")
+            .about("Moves the playlist entry at position <ID> to be after the currently playing file")
+            .arg(Arg::new("id")
+                .value_name("ID")
+                .help("Defines the id that should be played next")
+                .required(true)))
+        .subcommand(Command::new("position")
+            .about("Plays the file at <ID> in the playlist")
+            .arg(Arg::new("id")
+                .value_name("ID")
+                .required(true)))
+        .subcommand(Command::new("shuffle")
+            .about("Shuffles the playlist"))
+        .subcommand(Command::new("reverse")
+            .about("Reverses the playlist")
+            .visible_alias("rev"))
+        .subcommand(Command::new("loop-file")
+            .about("Controls whether the current file should be repeated after playback")
+            .arg(Arg::new("arg")
+                .value_name("on|off|toggle")
+                .value_parser(["on", "off", "toggle"])
+                .required(true)))
+        .subcommand(Command::new("loop-playlist")
+            .about("Controls whether the playlist should be repeated after the end is reached")
+            .arg(Arg::new("arg")
+                .value_name("on|off|toggle")
+                .value_parser(["on", "off", "toggle"])
+                .required(true)))
+        .subcommand(Command::new("volume")
+            .about("Controls the volume level")
+            .arg(Arg::new("num")
+                .value_name("NUM")
+                .required(true))
+            .arg(Arg::new("mode")
+                .short('m')
+                .long("mode")
+                .value_parser(["absolute", "relative"])
+                .hide_possible_values(true)
+                .default_value("absolute")
+                .help("<absolute|relative>\n\
+                <absolute>: Set the volume.\n\
+                <relative>: Change the volume relatively. To decrease, use negative values for <NUM>.\n")
+                .num_args(1)))
+        .subcommand(Command::new("mute")
+            .about("Controls whether audio output is muted")
+            .arg(Arg::new("arg")
+                .value_name("on|off|toggle")
+                .value_parser(["on", "off", "toggle"])
+                .required(true)))
+        .subcommand(Command::new("set")
+            .about("Sets an mpv property to <VALUE>")
+            .arg(Arg::new("property")
+                .required(true))
+            .arg(Arg::new("value")
+                .required(true)))
+        .subcommand(Command::new("get")
+            .about("Retrieves an mpv property (see property 'property-list' for possible values)")
+            .arg(Arg::new("property")
+                .required(true)))
+        .subcommand(Command::new("metadata")
+            .about("Retrieves a metadata attribute from the currently playing file (see property 'metadata' for possible values)")
+            .arg(Arg::new("attribute")
+                .required(true)))
+        .subcommand(Command::new("format")
+            .about("Replaces the given arguments in the format string with their real-time values from mpv")
+            .arg(Arg::new("input")
+                .value_name("FORMAT-STRING")
+                .help("Possible format string arguments are:\n\
+                    %filename%\n\
+                    %path%\n\
+                    %title%\n\
+                    %artist%\n\
+                    %album%\n\
+                    %album_artist%\n\
+                    %composer%\n\
+                    %genre%\n\
+                    %year%\n\
+                    %comment%\n\
+                    %track%\n\
+                    %disc%\n\
+                    %playlistlength%\n\
+                    %position%")
+                .required(true)))
+        .subcommand(Command::new("observe")
+            .about("Prints all mpv events in real-time. Additionally, observes a set of properties and informs about changes")
+            .arg(Arg::new("property")
+                .value_name("PROPERTY")
+                .num_args(0..)))
+        .subcommand(Command::new("wait")
+            .about("Blocks until the mpv event <EVENT> is triggered, or until the mpv property <PROPERTY> is changed")
             .arg_required_else_help(true)
-            .subcommand(Command::new("add")
-                .about("[OPTIONS] <FILE|PLAYLIST>\n\
-                Load the given file or playlist and play it. See -h for options.")
-                .visible_alias("load")
-                .arg(Arg::new("file")
-                    .value_name("FILE")
-                    .num_args(1..)
-                    .required(true))
-                .arg(Arg::new("mode")
-                    .short('m')
-                    .long("mode")
-                    .value_parser(["replace", "append", "append-play"])
-                    .hide_possible_values(true)
-                    .default_value("append-play")
-                    .help("<replace|append|append-play>\n\
-                    <replace>: Stop playback of the current file, and play the new file immediately.\n\
-                    <append>: Append the file to the playlist.\n\
-                    <append-play>: Append the file, and if nothing is currently playing, start playback.\n\n")
-                    .num_args(1))
-                .arg(Arg::new("type")
-                    .short('t')
-                    .long("type")
-                    .value_parser(["file", "playlist"])
-                    .default_value("file")))
-            .subcommand(Command::new("show")
-                .about("Prints the playlist."))
-            .subcommand(Command::new("clear")
-                .about("Clear the playlist, except the currently played file."))
-            .subcommand(Command::new("shuffle")
-                .about("Shuffles the playlist"))
-            .subcommand(Command::new("remove")
-                .about("Removes <ID> from the 0-based playlist. If <ID> is currently playing, playback will stop")
-                .arg(Arg::new("id")
-                    .value_name("ID")
-                    .help("Defines the id that should be removed from the 0-based playlist")
-                    .required(true)))
-            .subcommand(Command::new("move")
-                .about("Moves the playlist entry at position <FROM> to position <TO>")
-                .arg(Arg::new("from")
-                    .value_name("FROM")
-                    .help("Defines the id that should be moved to position <TO>")
-                    .required(true))
-                .arg(Arg::new("to")
-                    .value_name("TO")
-                    .help("Defines the id where the entry at <FROM> should be moved to")
-                    .required(true)))
-            .subcommand(Command::new("play-next")
-                .about("Moves the playlist entry at position <ID> after the currently playing ID")
-                .visible_alias("next")
-                .arg(Arg::new("id")
-                    .value_name("ID")
-                    .help("Defines the id that should be played next")
-                    .required(true)))
-            .subcommand(Command::new("play")
-                .about("Plays the file at <ID> in the playlist")
-                .arg(Arg::new("id")
-                    .value_name("ID")
-                    .help("Defines the id that should be played next")
-                    .required(true)))
-            .subcommand(Command::new("reverse")
-                .about("Reverses the playlist")
-                .visible_alias("rev")))
+            .arg(Arg::new("event")
+                .value_name("EVENT")
+                .value_parser([
+                    "start-file",
+                    "end-file",
+                    "file-loaded",
+                    "seek",
+                    "playback-restart",
+                    "shutdown",
+                    "video-reconfig",
+                    "audio-reconfig"])
+                .num_args(1..))
+            .arg(Arg::new("property")
+                .value_name("PROPERTY")
+                .num_args(1..)
+                .last(true)))
         .get_matches();
 
     // Input socket is always present, therefore unwrap
@@ -263,20 +217,19 @@ fn main() -> Result<(), Error> {
     let mut mpv = match Mpv::connect(socket) {
         Ok(instance) => instance,
         Err(msg) => match matches.subcommand() {
-            Some(("playlist", playlist_matches)) => match playlist_matches.subcommand() {
-                Some(("add", _)) => {
-                    Cmd::new("mpv")
-                        .args(["--really-quiet",
-                               "--idle=once",
-                               "--vid=no",
-                               &("--input-ipc-server=".to_string() + socket)])
-                        .spawn()
-                        .expect("mpv failed to start");
-                    thread::sleep(time::Duration::from_millis(500));
-                    Mpv::connect(socket)?
-                }
-                _ => error!("Error: {}", msg),
-            },
+            Some(("add", _)) => {
+                Cmd::new("mpv")
+                    .args([
+                        "--really-quiet",
+                        "--idle=once",
+                        "--vid=no",
+                        &("--input-ipc-server=".to_string() + socket),
+                    ])
+                    .spawn()
+                    .expect("mpv failed to start");
+                thread::sleep(time::Duration::from_millis(500));
+                Mpv::connect(socket)?
+            }
             _ => error!("Error: {}", msg),
         },
     };
@@ -290,9 +243,147 @@ fn main() -> Result<(), Error> {
         }
         Some(("next", _)) => mpv.command("playlist-next")?,
         Some(("prev", _)) => mpv.command("playlist-prev")?,
+        Some(("seek", seek_matches)) => {
+            let num = seek_matches.get_one::<String>("num").unwrap();
+            let mode = seek_matches.get_one::<String>("mode").unwrap().as_str();
+            mpv.command_arg("seek", &[num, mode])?
+        }
         Some(("restart", _)) => mpv.command_arg("seek", &["0", "absolute"])?,
-        Some(("stop", _)) => mpv.command("stop")?,
         Some(("kill", _)) => mpv.command("quit")?,
+
+        Some(("add", add_matches)) => {
+            for file in add_matches.get_many::<String>("file").unwrap() {
+                let command = match add_matches.get_one::<String>("type").unwrap().as_str() {
+                    "file" => "loadfile",
+                    "playlist" => "loadlist",
+                    _ => unreachable!(),
+                };
+                let mode = add_matches.get_one::<String>("mode").unwrap().as_str();
+                mpv.command_arg(command, &[file, mode])?
+            }
+        }
+
+        Some(("playlist", _)) => {
+            let playlist = mpv.get_property("playlist")?;
+            let p = playlist.as_array().unwrap();
+            for (i, entry) in p.iter().enumerate() {
+                let e = entry.as_object().unwrap();
+                let title = if e.contains_key("title") {
+                    e["title"].as_str().unwrap()
+                } else {
+                    e["filename"].as_str().unwrap()
+                };
+                let mut output = format!("{}\t{}", i + 1, title);
+                if e.contains_key("current") {
+                    output = format!("{}", output.reverse());
+                }
+                println!("{}", output);
+            }
+        }
+
+        Some(("stop", _)) => mpv.command("stop")?,
+        Some(("clear", _)) => mpv.command("playlist-clear")?,
+
+        Some(("remove", remove_matches)) => {
+            let id = remove_matches.get_one::<String>("id").unwrap();
+            mpv.command_arg("playlist-remove", &[id])?;
+        }
+
+        Some(("move", move_matches)) => {
+            let from = move_matches.get_one::<String>("from").unwrap();
+            let to = move_matches.get_one::<String>("to").unwrap();
+            mpv.command_arg("playlist-move", &[from, to])?
+        }
+
+        Some(("play-next", play_next_matches)) => {
+            let pos = mpv.get_property("playlist-pos")?.as_u64().unwrap();
+            let id = play_next_matches.get_one::<String>("id").unwrap();
+            mpv.command_arg("playlist-move", &[id, &(pos + 1).to_string()])?
+        }
+
+        Some(("position", position_matches)) => {
+            let id = position_matches.get_one::<String>("id").unwrap().parse::<usize>().unwrap();
+            mpv.set_property("playlist-pos", id)?
+        }
+
+        Some(("shuffle", _)) => mpv.command("playlist-shuffle")?,
+
+        Some(("reverse", _)) => {
+            let count = (mpv.get_property("playlist-count")?.as_u64().unwrap() as usize) - 1;
+            let count_str = count.to_string();
+            for i in 0..count {
+                mpv.command_arg("playlist-move", &[&count_str, &i.to_string()])?;
+            }
+        }
+
+        Some(("loop-file", loop_file_matches)) => {
+            let arg = match loop_file_matches.get_one::<String>("arg").unwrap().as_str() {
+                "on" => true,
+                "off" => false,
+                "toggle" => matches!(mpv.get_property_string("loop-file")?.as_str(), "false"),
+                _ => unreachable!(),
+            };
+            mpv.set_property("loop-file", arg)?;
+        }
+
+        Some(("loop-playlist", loop_playlist_matches)) => {
+            let arg = match loop_playlist_matches.get_one::<String>("arg").unwrap().as_str() {
+                "on" => true,
+                "off" => false,
+                "toggle" => matches!(mpv.get_property_string("loop-playlist")?.as_str(), "false"),
+                _ => unreachable!(),
+            };
+            mpv.set_property("loop-playlist", arg)?;
+        }
+
+        Some(("volume", volume_matches)) => {
+            let num = volume_matches.get_one::<String>("num").unwrap().parse::<f64>().unwrap();
+            match volume_matches.get_one::<String>("mode").unwrap().as_str() {
+                "absolute" => mpv.set_property("volume", num)?,
+                "relative" => {
+                    let volume = mpv.get_property("volume")?.as_f64().unwrap();
+                    mpv.set_property("volume", volume + num)?;
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        Some(("mute", mute_matches)) => {
+            let arg = match mute_matches.get_one::<String>("arg").unwrap().as_str() {
+                "on" => true,
+                "off" => false,
+                "toggle" => !mpv.get_property("mute")?.as_bool().unwrap(),
+                _ => unreachable!(),
+            };
+            mpv.set_property("mute", arg)?;
+        }
+
+        Some(("set", set_matches)) => {
+            let property = set_matches.get_one::<String>("property").unwrap();
+            let value = set_matches.get_one::<String>("value").unwrap();
+            mpv.set_property(property, value)?;
+        }
+
+        Some(("get", get_matches)) => {
+            let property = get_matches.get_one::<String>("property").unwrap();
+            let value = mpv.get_property(property)?;
+            println!("{}", value);
+        }
+
+        Some(("metadata", metadata_matches)) => {
+            let attribute = metadata_matches.get_one::<String>("attribute").unwrap();
+            let property = mpv.get_property("metadata")?;
+            let metadata = property.as_object().unwrap();
+            if let Some(value) = metadata.get(attribute) {
+                if let Value::String(ref v) = value {
+                    println!("{}", v);
+                } else {
+                    println!("{:?}", value);
+                }
+            } else {
+                error!("Error: MpvError: metadata attribute not found");
+            }
+        }
 
         Some(("format", format_matches)) => {
             fn eval_format(mpv: &mut Mpv, metadata: &Map<String, Value>, key: &str) -> Option<String> {
@@ -400,214 +491,61 @@ fn main() -> Result<(), Error> {
             println!("{}", output);
         }
 
-        Some(("get", get_matches)) => match get_matches.subcommand() {
-            Some(("property", property_matches)) => {
-                let property = property_matches.get_one::<String>("property").unwrap();
-                let value = mpv.get_property_string(property)?;
-                println!("{}", value);
+        Some(("observe", observe_matches)) => {
+            let watched_properties = match observe_matches.get_many::<String>("property") {
+                Some(property_values) => property_values.collect::<Vec<&String>>(),
+                None => Vec::new(),
+            };
+            for (i, property) in watched_properties.iter().enumerate() {
+                mpv.observe_property(i as isize + 1, property)?;
             }
-
-            Some(("metadata", metadata_matches)) => {
-                let attribute = metadata_matches.get_one::<String>("metadata").unwrap();
-                let property = mpv.get_property("metadata")?;
-                let metadata = property.as_object().unwrap();
-                if let Some(value) = metadata.get(attribute) {
-                    if let Value::String(ref v) = value {
-                        println!("{}", v);
-                    } else {
-                        println!("{:?}", value);
-                    }
-                } else {
-                    error!("Error: MpvError: metadata attribute not found");
-                }
+            loop {
+                println!("{}", mpv.listen_raw());
             }
-
-            _ => unreachable!(),
-        },
-
-        Some(("set", set_matches)) => match set_matches.subcommand() {
-            Some(("property", property_matches)) => {
-                let property = property_matches.get_one::<String>("property").unwrap();
-                let value = property_matches.get_one::<String>("value").unwrap();
-                mpv.set_property(property, value)?;
-            }
-
-            Some(("mute", mute_matches)) => {
-                let switch_type = match mute_matches.get_one::<String>("arg").unwrap().as_str() {
-                    "on" => true,
-                    "off" => false,
-                    "toggle" => !mpv.get_property("mute")?.as_bool().unwrap(),
-                    _ => unreachable!(),
-                };
-                mpv.set_property("mute", switch_type)?;
-            }
-
-            Some(("volume", volume_matches)) => {
-                let num = volume_matches.get_one::<String>("num").unwrap().parse::<f64>().unwrap();
-                match volume_matches.get_one::<String>("mode").unwrap().as_str() {
-                    "absolute" => mpv.set_property("volume", num)?,
-                    "relative" => {
-                        let volume = mpv.get_property("volume")?.as_f64().unwrap();
-                        mpv.set_property("volume", volume + num)?;
-                    }
-                    _ => unreachable!(),
-                }
-            }
-
-            Some(("loop-file", loop_file_matches)) => {
-                let switch_type = match loop_file_matches.get_one::<String>("arg").unwrap().as_str() {
-                    "on" => true,
-                    "off" => false,
-                    "toggle" => matches!(mpv.get_property_string("loop-file")?.as_str(), "false"),
-                    _ => unreachable!(),
-                };
-                mpv.set_property("loop-file", switch_type)?;
-            }
-
-            Some(("loop-playlist", loop_playlist_matches)) => {
-                let switch_type = match loop_playlist_matches.get_one::<String>("arg").unwrap().as_str() {
-                    "on" => true,
-                    "off" => false,
-                    "toggle" => matches!(mpv.get_property_string("loop-playlist")?.as_str(), "false"),
-                    _ => unreachable!(),
-                };
-                mpv.set_property("loop-playlist", switch_type)?;
-            }
-
-            _ => unreachable!(),
-        },
-
-        Some(("seek", seek_matches)) => {
-            let num = seek_matches.get_one::<String>("num").unwrap();
-            let seek_option = seek_matches.get_one::<String>("mode").unwrap().as_str();
-            mpv.command_arg("seek", &[num, seek_option])?
         }
 
-        Some(("events", events_matches)) => match events_matches.subcommand() {
-            Some(("wait-for", wait_for_matches)) => {
-                let watched_events = match wait_for_matches.get_many::<String>("event") {
-                    Some(event_values) => event_values.collect::<Vec<&String>>(),
-                    None => Vec::new(),
-                };
-                let watched_properties = match wait_for_matches.get_many::<String>("property") {
-                    Some(property_values) => property_values.collect::<Vec<&String>>(),
-                    None => Vec::new(),
-                };
-                for (i, property) in watched_properties.iter().enumerate() {
-                    mpv.observe_property(i as isize + 1, property)?;
-                }
-                // Needed since the observe_property command itself emits a property-change event
-                let mut watched_properties_first = Vec::<&String>::new();
-                loop {
-                    match mpv.listen() {
-                        Ok(event) => {
-                            if let Some(Value::String(e)) = event.get("event") {
-                                if e == "property-change" {
-                                    if let Some(Value::String(property)) = event.get("name") {
-                                        if let Some(idx) = watched_properties.iter().position(|v| v == &property) {
-                                            if watched_properties_first.contains(&property) {
-                                                break;
-                                            } else {
-                                                watched_properties_first.push(watched_properties[idx]);
-                                            }
+        Some(("wait", wait_matches)) => {
+            let watched_events = match wait_matches.get_many::<String>("event") {
+                Some(event_values) => event_values.collect::<Vec<&String>>(),
+                None => Vec::new(),
+            };
+            let watched_properties = match wait_matches.get_many::<String>("property") {
+                Some(property_values) => property_values.collect::<Vec<&String>>(),
+                None => Vec::new(),
+            };
+            for (i, property) in watched_properties.iter().enumerate() {
+                mpv.observe_property(i as isize + 1, property)?;
+            }
+            // Needed since the observe_property command itself emits a property-change event
+            let mut watched_properties_first = Vec::<&String>::new();
+            loop {
+                match mpv.listen() {
+                    Ok(event) => {
+                        if let Some(Value::String(e)) = event.get("event") {
+                            if e == "property-change" {
+                                if let Some(Value::String(property)) = event.get("name") {
+                                    if let Some(idx) = watched_properties.iter().position(|v| v == &property) {
+                                        if watched_properties_first.contains(&property) {
+                                            break;
+                                        } else {
+                                            watched_properties_first.push(watched_properties[idx]);
                                         }
                                     }
-                                } else if watched_events.contains(&e) {
-                                    break;
                                 }
+                            } else if watched_events.contains(&e) {
+                                break;
                             }
                         }
-                        Err(msg) => {
-                            error!("Error: {}", msg);
-                        }
+                    }
+                    Err(msg) => {
+                        error!("Error: {}", msg);
                     }
                 }
-                for i in 1..=watched_properties.len() {
-                    mpv.unobserve_property(i as isize)?;
-                }
             }
-
-            Some(("observe", observe_matches)) => {
-                let watched_properties = match observe_matches.get_many::<String>("property") {
-                    Some(property_values) => property_values.collect::<Vec<&String>>(),
-                    None => Vec::new(),
-                };
-                for (i, property) in watched_properties.iter().enumerate() {
-                    mpv.observe_property(i as isize + 1, property)?;
-                }
-                loop {
-                    println!("{}", mpv.listen_raw());
-                }
+            for i in 1..=watched_properties.len() {
+                mpv.unobserve_property(i as isize)?;
             }
-
-            _ => unreachable!(),
-        },
-
-        Some(("playlist", playlist_matches)) => match playlist_matches.subcommand() {
-            Some(("add", add_matches)) => {
-                for file in add_matches.get_many::<String>("file").unwrap() {
-                    let command = match add_matches.get_one::<String>("type").unwrap().as_str() {
-                        "file" => "loadfile",
-                        "playlist" => "loadlist",
-                        _ => unreachable!(),
-                    };
-                    let add_option = add_matches.get_one::<String>("mode").unwrap().as_str();
-                    mpv.command_arg(command, &[file, add_option])?
-                }
-            }
-
-            Some(("shuffle", _)) => mpv.command("playlist-shuffle")?,
-            Some(("clear", _)) => mpv.command("playlist-clear")?,
-
-            Some(("remove", remove_matches)) => {
-                let id = remove_matches.get_one::<String>("id").unwrap();
-                mpv.command_arg("playlist-remove", &[id])?;
-            }
-
-            Some(("move", move_matches)) => {
-                let from = move_matches.get_one::<String>("from").unwrap();
-                let to = move_matches.get_one::<String>("to").unwrap();
-                mpv.command_arg("playlist-move", &[from, to])?
-            }
-
-            Some(("play-next", play_next_matches)) => {
-                let current_id = mpv.get_property("playlist-pos")?.as_u64().unwrap();
-                let id = play_next_matches.get_one::<String>("id").unwrap();
-                mpv.command_arg("playlist-move", &[id, &(current_id + 1).to_string()])?
-            }
-
-            Some(("play", play_matches)) => {
-                let id = play_matches.get_one::<String>("id").unwrap().parse::<usize>().unwrap();
-                mpv.set_property("playlist-pos", id)?
-            }
-
-            Some(("reverse", _)) => {
-                let count = (mpv.get_property("playlist-count")?.as_u64().unwrap() as usize) - 1;
-                for i in 0..count {
-                    mpv.command_arg("playlist-move", &[&count.to_string(), &i.to_string()])?;
-                }
-            }
-
-            Some(("show", _)) => {
-                let playlist = mpv.get_property("playlist")?;
-                let p = playlist.as_array().unwrap();
-                for (i, entry) in p.iter().enumerate() {
-                    let e = entry.as_object().unwrap();
-                    let title = if e.contains_key("title") {
-                        e["title"].as_str().unwrap()
-                    } else {
-                        e["filename"].as_str().unwrap()
-                    };
-                    let mut output = format!("{}\t{}", i + 1, title);
-                    if e.contains_key("current") {
-                        output = format!("{}", output.reverse());
-                    }
-                    println!("{}", output);
-                }
-            }
-
-            _ => unreachable!(),
-        },
+        }
 
         _ => unreachable!(),
     }
