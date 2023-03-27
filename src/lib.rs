@@ -64,11 +64,8 @@ pub enum Error {
     ConnectError(String),
     ReadError(String),
     WriteError(String),
-    JsonContainsUnexptectedType,
-    UnexpectedResult,
     UnexpectedValue,
     MissingValue,
-    UnsupportedType,
 }
 
 impl Display for Error {
@@ -79,11 +76,8 @@ impl Display for Error {
             Error::WriteError(ref msg) => f.write_str(&format!("WriteError: {}", msg)),
             Error::JsonParseError(ref msg) => f.write_str(&format!("JsonParseError: {}", msg)),
             Error::MpvError(ref msg) => f.write_str(&format!("MpvError: {}", msg)),
-            Error::JsonContainsUnexptectedType => f.write_str("Mpv sent a value with an unexpected type"),
-            Error::UnexpectedResult => f.write_str("Unexpected result received"),
             Error::UnexpectedValue => f.write_str("Unexpected value received"),
             Error::MissingValue => f.write_str("Missing value"),
-            Error::UnsupportedType => f.write_str("Unsupported type received"),
         }
     }
 }
