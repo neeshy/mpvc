@@ -340,10 +340,7 @@ fn main() -> Result<(), Error> {
             let num = volume_matches.get_one::<String>("num").unwrap().parse::<f64>().unwrap();
             match volume_matches.get_one::<String>("mode").unwrap().as_str() {
                 "absolute" => mpv.set_property("volume", num)?,
-                "relative" => {
-                    let volume = mpv.get_property("volume")?.as_f64().unwrap();
-                    mpv.set_property("volume", volume + num)?;
-                }
+                "relative" => mpv.add_property("volume", num)?,
                 _ => unreachable!(),
             }
         }

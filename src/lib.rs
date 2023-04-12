@@ -297,6 +297,10 @@ impl Mpv {
         self._command(json!(["set_property", property, value]).as_array().unwrap()).map(|_| ())
     }
 
+    pub fn add_property(&mut self, property: &str, value: f64) -> Result<(), Error> {
+        self._command(json!(["add", property, value]).as_array().unwrap()).map(|_| ())
+    }
+
     pub fn observe_property(&mut self, id: isize, property: &str) -> Result<(), Error> {
         self._command(json!(["observe_property", id, property]).as_array().unwrap()).map(|_| ())
     }
