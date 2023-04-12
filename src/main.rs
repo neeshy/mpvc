@@ -69,13 +69,14 @@ fn main() -> Result<(), Error> {
             .arg(Arg::new("mode")
                 .short('m')
                 .long("mode")
-                .value_parser(["replace", "append", "append-play"])
+                .value_parser(["replace", "append", "append-play", "append-next"])
                 .hide_possible_values(true)
                 .default_value("append-play")
-                .help("<replace|append|append-play>\n\
+                .help("<replace|append|append-play|append-next>\n\
                 <replace>: Stop playback of the current file, and play the new file immediately.\n\
                 <append>: Append the file to the playlist.\n\
-                <append-play>: Append the file, and if nothing is currently playing, start playback.\n")
+                <append-play>: Append the file, and if nothing is currently playing, start playback.\n\
+                <append-next>: Append the file to the playlist, and place it in the next position.\n")
                 .num_args(1))
             .arg(Arg::new("type")
                 .short('t')
@@ -252,14 +253,31 @@ fn main() -> Result<(), Error> {
         Some(("kill", _)) => mpv.command("quit")?,
 
         Some(("add", add_matches)) => {
-            for file in add_matches.get_many::<String>("file").unwrap() {
-                let command = match add_matches.get_one::<String>("type").unwrap().as_str() {
-                    "file" => "loadfile",
-                    "playlist" => "loadlist",
-                    _ => unreachable!(),
-                };
-                let mode = add_matches.get_one::<String>("mode").unwrap().as_str();
-                mpv.command_arg(command, &[file, mode])?
+            let command = match add_matches.get_one::<String>("type").unwrap().as_str() {
+                "file" => "loadfile",
+                "playlist" => "loadlist",
+                _ => unreachable!(),
+            };
+            let mode = add_matches.get_one::<String>("mode").unwrap().as_str();
+            match mode {
+                "replace" | "append" | "append-play" => {
+                    for file in add_matches.get_many::<String>("file").unwrap() {
+                        mpv.command_arg(command, &[file, mode])?
+                    }
+                }
+                "append-next" => {
+                    let files = add_matches.get_many::<String>("file").unwrap();
+                    let files_len = files.len();
+                    let count = mpv.get_property("playlist-count")?.as_u64().unwrap() as usize;
+                    for file in files {
+                        mpv.command_arg(command, &[file, "append"])?;
+                    }
+                    let pos = mpv.get_property("playlist-pos")?.as_u64().unwrap() as usize + 1;
+                    for i in 0..files_len {
+                        mpv.command_arg("playlist-move", &[&(count + i).to_string(), &(pos + i).to_string()])?;
+                    }
+                }
+                _ => unreachable!(),
             }
         }
 
@@ -309,7 +327,7 @@ fn main() -> Result<(), Error> {
         Some(("shuffle", _)) => mpv.command("playlist-shuffle")?,
 
         Some(("reverse", _)) => {
-            let count = (mpv.get_property("playlist-count")?.as_u64().unwrap() as usize) - 1;
+            let count = mpv.get_property("playlist-count")?.as_u64().unwrap() as usize - 1;
             let count_str = count.to_string();
             for i in 0..count {
                 mpv.command_arg("playlist-move", &[&count_str, &i.to_string()])?;
