@@ -207,7 +207,7 @@ impl Mpv {
     /// }
     /// ```
     pub fn command(&mut self, command: &str) -> Result<(), Error> {
-        self.command_arg(command, &[]).map(|_| ())
+        self._command(&vec![Value::String(command.to_string())]).map(|_| ())
     }
 
     /// # Description
