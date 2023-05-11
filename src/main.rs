@@ -557,9 +557,6 @@ fn main() -> Result<(), Error> {
                     }
                 }
             }
-            for i in 1..=watched_properties.len() {
-                mpv.unobserve_property(i as isize)?;
-            }
         }
 
         _ => unreachable!(),
