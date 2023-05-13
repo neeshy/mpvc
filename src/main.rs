@@ -514,8 +514,8 @@ fn main() -> Result<(), Error> {
             for (i, property) in watched_properties.iter().enumerate() {
                 mpv.observe_property(i as isize + 1, property)?;
             }
-            loop {
-                println!("{}", mpv.listen_raw());
+            while let Ok(response) = mpv.listen_raw() {
+                println!("{}", response);
             }
         }
 

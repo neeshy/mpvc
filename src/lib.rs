@@ -116,8 +116,11 @@ impl Mpv {
             .map_err(|why| Error::WriteError(why.to_string()))?;
         loop {
             let mut response = String::new();
-            self.reader.read_line(&mut response)
+            let n = self.reader.read_line(&mut response)
                 .map_err(|why| Error::ReadError(why.to_string()))?;
+            if n == 0 {
+                return Err(Error::ReadError("EOF reached".to_string()));
+            }
             response = response.trim_end().to_string();
             debug!("Response: {}", response);
 
@@ -131,7 +134,7 @@ impl Mpv {
             }?;
 
             if let Some(Value::Number(ref request_id)) = map.get("request_id") {
-                if !request_id.is_i64() || request_id.as_i64().unwrap() != self.counter {
+                if request_id.as_i64() != Some(self.counter) {
                     continue;
                 }
             } else {
@@ -330,8 +333,11 @@ impl Mpv {
         }
         loop {
             let mut response = String::new();
-            self.reader.read_line(&mut response)
+            let n = self.reader.read_line(&mut response)
                 .map_err(|why| Error::ReadError(why.to_string()))?;
+            if n == 0 {
+                return Err(Error::ReadError("EOF reached".to_string()));
+            }
             response = response.trim_end().to_string();
             debug!("Event: {}", response);
 
@@ -350,9 +356,13 @@ impl Mpv {
         }
     }
 
-    pub fn listen_raw(&mut self) -> String {
+    pub fn listen_raw(&mut self) -> Result<String, Error> {
         let mut response = String::new();
-        self.reader.read_line(&mut response).unwrap();
-        response.trim_end().to_string()
+        let n = self.reader.read_line(&mut response)
+            .map_err(|why| Error::ReadError(why.to_string()))?;
+        if n == 0 {
+            return Err(Error::ReadError("EOF reached".to_string()));
+        }
+        Ok(response.trim_end().to_string())
     }
 }
