@@ -96,7 +96,7 @@ fn main() {
                         }
                     }
                     "playlist-pos-1" => {
-                        if let Some(Value::Number(n)) = event.get("data") {
+                        if let Some(Value::Number(ref n)) = event.get("data") {
                             if let Some(u) = n.as_u64() {
                                 position = Some(u);
                                 print(&idle, &pause, &position, &count, &title);
@@ -104,7 +104,7 @@ fn main() {
                         }
                     }
                     "playlist-count" => {
-                        if let Some(Value::Number(n)) = event.get("data") {
+                        if let Some(Value::Number(ref n)) = event.get("data") {
                             if let Some(u) = n.as_u64() {
                                 count = Some(u);
                                 print(&idle, &pause, &position, &count, &title);
