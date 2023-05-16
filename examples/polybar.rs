@@ -117,7 +117,7 @@ fn main() {
                             print(&idle, &pause, &position, &count, &title);
                         }
                     }
-                    _ => unreachable!(),
+                    _ => continue,
                 }
             }
         }
