@@ -11,7 +11,7 @@ use std::process::Command as Cmd;
 use std::thread;
 use std::time;
 
-use mpvc::*;
+use mpvc::{Error, Mpv};
 
 use clap::{Arg, Command};
 use colored::Colorize;

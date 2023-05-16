@@ -11,7 +11,7 @@ use std::sync;
 use notify::{event, RecursiveMode, Watcher};
 use serde_json::Value;
 
-use mpvc::*;
+use mpvc::Mpv;
 
 fn watch() {
     let (tx, rx) = sync::mpsc::channel();
