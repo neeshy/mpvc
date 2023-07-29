@@ -534,26 +534,20 @@ fn main() -> Result<(), Error> {
             // Needed since the observe_property command itself emits a property-change event
             let mut watched_properties_first = Vec::<&String>::new();
             loop {
-                match mpv.listen() {
-                    Ok(event) => {
-                        if let Some(Value::String(e)) = event.get("event") {
-                            if e == "property-change" {
-                                if let Some(Value::String(property)) = event.get("name") {
-                                    if let Some(idx) = watched_properties.iter().position(|v| v == &property) {
-                                        if watched_properties_first.contains(&property) {
-                                            break;
-                                        } else {
-                                            watched_properties_first.push(watched_properties[idx]);
-                                        }
-                                    }
+                let event = mpv.listen()?;
+                if let Some(Value::String(e)) = event.get("event") {
+                    if e == "property-change" {
+                        if let Some(Value::String(property)) = event.get("name") {
+                            if let Some(idx) = watched_properties.iter().position(|v| v == &property) {
+                                if watched_properties_first.contains(&property) {
+                                    break;
+                                } else {
+                                    watched_properties_first.push(watched_properties[idx]);
                                 }
-                            } else if watched_events.contains(&e) {
-                                break;
                             }
                         }
-                    }
-                    Err(msg) => {
-                        error!("Error: {}", msg);
+                    } else if watched_events.contains(&e) {
+                        break;
                     }
                 }
             }
