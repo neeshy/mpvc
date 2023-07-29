@@ -290,7 +290,7 @@ fn main() -> Result<(), Error> {
                 };
                 let mut output = format!("{}\t{}", i + 1, title);
                 if e.contains_key("current") {
-                    output = format!("{}", output.reverse());
+                    output = format!("{}", output.reversed());
                 }
                 println!("{}", output);
             }

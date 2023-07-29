@@ -1,16 +1,16 @@
 [package]
 name = "mpvc"
-version = "1.2.2"
+version = "1.2.3"
 authors = [ "neeshy <neeshy@tfwno.gf>", "Jonas Frei <freijon@pm.me>" ]
 description = "An mpc-like cli tool for mpv"
 
 [dependencies]
-clap = "4.2.7"
-colored = "2.0.0"
-log = "0.4.17"
-serde = "1.0.163"
-serde_json = "1.0.96"
+clap = "4.3.19"
+colored = "2.0.4"
+log = "0.4.19"
+serde = "1.0.178"
+serde_json = "1.0.104"
 
 [dev-dependencies]
 env_logger = "0.10.0"
-notify = "5.1.0"
+notify = "6.0.1"
