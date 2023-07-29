@@ -4,9 +4,6 @@ extern crate clap;
 extern crate colored;
 extern crate serde_json;
 
-#[macro_use]
-mod macros;
-
 use std::process::Command as Cmd;
 use std::thread;
 use std::time;
@@ -231,7 +228,7 @@ fn main() -> Result<(), Error> {
                 thread::sleep(time::Duration::from_millis(500));
                 Mpv::connect(socket)?
             }
-            _ => error!("Error: {}", msg),
+            _ => return Err(msg)
         },
     };
 
@@ -396,7 +393,7 @@ fn main() -> Result<(), Error> {
                     println!("{:?}", value);
                 }
             } else {
-                error!("Error: MpvError: metadata attribute not found");
+                return Err(Error::MpvError("metadata attribute not found".to_string()));
             }
         }
 
