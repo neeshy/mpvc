@@ -13,15 +13,10 @@ use serde_json::Value;
 
 use mpvc::Mpv;
 
-fn watch() {
+fn watch() -> Result<(), notify::Error> {
     let (tx, rx) = sync::mpsc::channel();
-    let mut watcher = match notify::recommended_watcher(tx) {
-        Ok(w) => w,
-        Err(_) => return,
-    };
-    if let Err(_) = watcher.watch("/tmp".as_ref(), RecursiveMode::NonRecursive) {
-        return;
-    }
+    let mut watcher = notify::recommended_watcher(tx)?;
+    watcher.watch("/tmp".as_ref(), RecursiveMode::NonRecursive)?;
     for event in rx {
         if let Ok(e) = event {
             if e.kind == event::EventKind::Create(event::CreateKind::File) &&
@@ -30,6 +25,7 @@ fn watch() {
             }
         }
     }
+    Ok(())
 }
 
 fn print(idle: &bool, pause: &Option<String>, position: &Option<u64>, count: &Option<u64>, title: &Option<String>) {
@@ -52,12 +48,12 @@ fn main() {
                     }
                 } else {
                     println!("N/A");
-                    watch();
+                    let _ = watch();
                 }
             }
             Err(_) => {
                 println!("N/A");
-                watch();
+                let _ = watch();
             }
         }
     };

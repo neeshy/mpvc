@@ -1,6 +1,6 @@
 [package]
 name = "mpvc"
-version = "1.2.4"
+version = "1.2.5"
 authors = [ "neeshy <neeshy@tfwno.gf>", "Jonas Frei <freijon@pm.me>" ]
 description = "An mpc-like cli tool for mpv"
 
