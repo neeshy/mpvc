@@ -84,11 +84,11 @@ impl Mpv {
         }
     }
 
-    fn _disconnect(&mut self) {
+    fn _disconnect(&self) {
         self.reader.get_ref().shutdown(std::net::Shutdown::Both).expect("socket disconnect");
     }
 
-    pub fn disconnect(mut self) {
+    pub fn disconnect(self) {
         self._disconnect();
     }
 
