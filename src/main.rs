@@ -228,7 +228,7 @@ fn main() -> Result<(), Error> {
                 thread::sleep(time::Duration::from_millis(500));
                 Mpv::connect(socket)?
             }
-            _ => return Err(msg)
+            _ => return Err(msg),
         },
     };
 
@@ -386,14 +386,11 @@ fn main() -> Result<(), Error> {
             let attribute = metadata_matches.get_one::<String>("attribute").unwrap();
             let property = mpv.get_property("metadata")?;
             let metadata = property.as_object().unwrap();
-            if let Some(value) = metadata.get(attribute) {
-                if let Value::String(ref v) = value {
-                    println!("{}", v);
-                } else {
-                    println!("{:?}", value);
-                }
+            let value = metadata.get(attribute).ok_or(Error::MpvError("metadata attribute not found".to_string()))?;
+            if let Value::String(ref v) = value {
+                println!("{}", v);
             } else {
-                return Err(Error::MpvError("metadata attribute not found".to_string()));
+                println!("{:?}", value);
             }
         }
 
