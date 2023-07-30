@@ -3,8 +3,7 @@ extern crate serde;
 extern crate serde_json;
 
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use std::io::prelude::*;
-use std::io::BufReader;
+use std::io::{BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 
 use log::debug;
@@ -12,16 +11,15 @@ use serde::ser::Serialize;
 use serde_json::{json, Map, Value};
 
 pub struct Mpv {
-    stream: UnixStream,
+    path: String,
     reader: BufReader<UnixStream>,
-    name: String,
     responses: Vec<Map<String, Value>>,
     counter: i64,
 }
 
 impl Debug for Mpv {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> FmtResult {
-        fmt.debug_tuple("Mpv").field(&self.name).finish()
+        fmt.debug_tuple("Mpv").field(&self.path).finish()
     }
 }
 
@@ -33,31 +31,16 @@ impl Drop for Mpv {
 
 impl Clone for Mpv {
     fn clone(&self) -> Self {
-        let stream = self.stream.try_clone().expect("cloning UnixStream");
-        let cloned_stream = stream.try_clone().expect("cloning UnixStream");
+        let sock = self.reader.get_ref().try_clone().expect("cloning UnixStream");
         Mpv {
-            stream,
-            reader: BufReader::new(cloned_stream),
-            name: self.name.clone(),
-            responses: self.responses.clone(),
-            counter: self.counter,
-        }
-    }
-
-    fn clone_from(&mut self, source: &Self) {
-        let stream = source.stream.try_clone().expect("cloning UnixStream");
-        let cloned_stream = stream.try_clone().expect("cloning UnixStream");
-        *self = Mpv {
-            stream,
-            reader: BufReader::new(cloned_stream),
-            name: source.name.clone(),
+            path: self.path.clone(),
+            reader: BufReader::new(sock),
             responses: self.responses.clone(),
             counter: self.counter,
         }
     }
 }
 
-#[derive(Debug)]
 pub enum Error {
     MpvError(String),
     JsonParseError(String),
@@ -69,38 +52,40 @@ pub enum Error {
 }
 
 impl Display for Error {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            Error::ConnectError(ref msg) => f.write_str(&format!("ConnectError: {}", msg)),
-            Error::ReadError(ref msg) => f.write_str(&format!("ReadError: {}", msg)),
-            Error::WriteError(ref msg) => f.write_str(&format!("WriteError: {}", msg)),
-            Error::JsonParseError(ref msg) => f.write_str(&format!("JsonParseError: {}", msg)),
-            Error::MpvError(ref msg) => f.write_str(&format!("MpvError: {}", msg)),
-            Error::UnexpectedValue => f.write_str("Unexpected value received"),
-            Error::MissingValue => f.write_str("Missing value"),
+            Error::ConnectError(ref msg) => write!(f, "ConnectError: {}", msg),
+            Error::ReadError(ref msg) => write!(f, "ReadError: {}", msg),
+            Error::WriteError(ref msg) => write!(f, "WriteError: {}", msg),
+            Error::JsonParseError(ref msg) => write!(f, "JsonParseError: {}", msg),
+            Error::MpvError(ref msg) => write!(f, "MpvError: {}", msg),
+            Error::UnexpectedValue => write!(f, "Unexpected value received"),
+            Error::MissingValue => write!(f, "Missing value"),
         }
     }
 }
 
+impl Debug for Error {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        Display::fmt(self, f)
+    }
+}
+
 impl Mpv {
-    pub fn connect(socket: &str) -> Result<Mpv, Error> {
-        match UnixStream::connect(socket) {
-            Ok(stream) => {
-                let cloned_stream = stream.try_clone().expect("cloning UnixStream");
-                Ok(Mpv {
-                    stream,
-                    reader: BufReader::new(cloned_stream),
-                    name: String::from(socket),
-                    responses: Vec::new(),
-                    counter: -1,
-                })
-            }
+    pub fn connect(path: &str) -> Result<Mpv, Error> {
+        match UnixStream::connect(path) {
+            Ok(sock) => Ok(Mpv {
+                reader: BufReader::new(sock),
+                path: path.to_string(),
+                responses: Vec::new(),
+                counter: -1,
+            }),
             Err(why) => Err(Error::ConnectError(why.to_string())),
         }
     }
 
     fn _disconnect(&mut self) {
-        self.stream.shutdown(std::net::Shutdown::Both).expect("socket disconnect");
+        self.reader.get_ref().shutdown(std::net::Shutdown::Both).expect("socket disconnect");
     }
 
     pub fn disconnect(mut self) {
@@ -109,10 +94,10 @@ impl Mpv {
 
     fn _command(&mut self, command: &Vec<Value>) -> Result<Value, Error> {
         self.counter += 1;
-        let v = json!({ "command": command, "request_id": self.counter });
+        let v = json!({"command": command, "request_id": self.counter});
         let c = &(v.to_string() + "\n");
         debug!("Command: {}", c.trim_end());
-        self.stream.write_all(c.as_bytes())
+        self.reader.get_ref().write_all(c.as_bytes())
             .map_err(|why| Error::WriteError(why.to_string()))?;
         loop {
             let mut response = String::new();
@@ -175,9 +160,7 @@ impl Mpv {
     /// ```
     /// use mpvipc::{Mpv, Error};
     /// fn main() -> Result<(), Error> {
-    ///     let mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///
-    ///     // Run command 'seek' which takes two arguments
+    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
     ///     mpv.command_arg("seek", &["0", "absolute"])?;
     ///     Ok(())
     /// }
@@ -202,9 +185,7 @@ impl Mpv {
     /// ```
     /// use mpvipc::{Mpv, Error};
     /// fn main() -> Result<(), Error> {
-    ///     let mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///
-    ///     // Run command 'playlist-shuffle' which takes no arguments
+    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
     ///     mpv.command("playlist-shuffle")?;
     ///     Ok(())
     /// }
@@ -217,13 +198,6 @@ impl Mpv {
     ///
     /// Retrieves the property value from mpv.
     ///
-    /// ## Supported types
-    /// - String
-    /// - bool
-    /// - Map<String, String>
-    /// - usize
-    /// - f64
-    ///
     /// ## Input arguments
     ///
     /// - **property** defines the mpv property that should be retrieved
@@ -232,9 +206,9 @@ impl Mpv {
     /// ```
     /// use mpvipc::{Mpv, Error};
     /// fn main() -> Result<(), Error> {
-    ///     let mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///     let paused: bool = mpv.get_property("pause")?;
-    ///     let title: String = mpv.get_property("media-title")?;
+    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    ///     let paused = mpv.get_property("pause")?.as_bool().unwrap();
+    ///     let title = mpv.get_property("media-title")?.as_str().unwrap();
     ///     Ok(())
     /// }
     /// ```
@@ -256,7 +230,7 @@ impl Mpv {
     /// ```
     /// use mpvipc::{Mpv, Error};
     /// fn main() -> Result<(), Error> {
-    ///     let mpv = Mpv::connect("/tmp/mpvsocket")?;
+    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
     ///     let title = mpv.get_property_string("media-title")?;
     ///     Ok(())
     /// }
@@ -276,12 +250,6 @@ impl Mpv {
     ///
     /// Sets the mpv property _<property>_ to _<value>_.
     ///
-    /// ## Supported types
-    /// - String
-    /// - bool
-    /// - f64
-    /// - usize
-    ///
     /// ## Input arguments
     ///
     /// - **property** defines the mpv property that should be retrieved
@@ -291,7 +259,7 @@ impl Mpv {
     /// ```
     /// use mpvipc::{Mpv, Error};
     /// fn main() -> Result<(), Error> {
-    ///     let mpv = Mpv::connect("/tmp/mpvsocket")?;
+    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
     ///     mpv.set_property("pause", true)?;
     ///     Ok(())
     /// }
@@ -314,15 +282,18 @@ impl Mpv {
 
     /// # Description
     ///
-    /// Blocks until an mpv event occurs and returns the Event.
+    /// Blocks until an mpv event occurs and returns the event.
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    /// loop {
-    ///     let event = mpv.event_listen()?;
-    ///     println!("{:?}", event);
+    /// ```
+    /// use mpvipc::{Mpv, Error};
+    /// fn main() -> Result<(), Error> {
+    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    ///     loop {
+    ///         let event = mpv.listen()?;
+    ///         println!("{:?}", event);
+    ///     }
     /// }
     /// ```
     pub fn listen(&mut self) -> Result<Map<String, Value>, Error> {
