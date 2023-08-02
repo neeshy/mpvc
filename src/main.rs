@@ -218,7 +218,7 @@ fn main() -> Result<(), Error> {
             Some(("add", _)) => {
                 Cmd::new("mpv")
                     .args([
-                        "--really-quiet",
+                        "--no-terminal",
                         "--idle=once",
                         "--vid=no",
                         &("--input-ipc-server=".to_string() + socket),
