@@ -6,7 +6,7 @@ extern crate serde_json;
 
 use std::process::Command as Cmd;
 use std::thread;
-use std::time;
+use std::time::Duration;
 
 use mpvc::{Error, Mpv};
 
@@ -177,12 +177,18 @@ fn main() -> Result<(), Error> {
                     %album_artist%\n\
                     %composer%\n\
                     %genre%\n\
+                    %date%\n\
                     %year%\n\
                     %comment%\n\
                     %track%\n\
                     %disc%\n\
-                    %playlistlength%\n\
-                    %position%")
+                    %time%\n\
+                    %duration%\n\
+                    %percentage%\n\
+                    %position%\n\
+                    %playlist-count%\n\
+                    %n% (newline)\n\n\
+                    Additionally, any valid property may be used.")
                 .required(true)))
         .subcommand(Command::new("observe")
             .about("Prints all mpv events in real-time. Additionally, observes a set of properties and informs about changes")
@@ -225,7 +231,7 @@ fn main() -> Result<(), Error> {
                     ])
                     .spawn()
                     .expect("mpv failed to start");
-                thread::sleep(time::Duration::from_millis(500));
+                thread::sleep(Duration::from_millis(500));
                 Mpv::connect(socket)?
             }
             _ => return Err(msg),
@@ -396,92 +402,89 @@ fn main() -> Result<(), Error> {
 
         Some(("format", format_matches)) => {
             fn eval_format(mpv: &mut Mpv, metadata: &Map<String, Value>, key: &str) -> Option<String> {
-                macro_rules! fmt_metadata {
-                    ($key:expr) => {
-                        if key == $key {
-                            return Some(metadata.get($key)?.as_str()?.to_string());
-                        }
-                    };
-                }
-
-                macro_rules! fmt_property {
-                    ($property:expr) => {
-                        if key == $property {
-                            return Some(mpv.get_property($property).ok()?.as_str()?.to_string());
-                        }
-                    };
-                }
-
-                if key == "title" {
-                    if metadata.contains_key("title") {
-                        return Some(metadata["title"].as_str()?.to_string());
-                    } else {
-                        return Some(mpv.get_property("media-title").ok()?.as_str()?.to_string());
+                fn format_duration(d: u64) -> String {
+                    let s = d % 60;
+                    let m = (d / 60) % 60;
+                    let h = d / 3600;
+                    if h > 0 {
+                        return format!("{:02}:{:02}:{:02}", h, m, s);
                     }
+                    return format!("{:02}:{:02}", m, s);
                 }
 
-                fmt_metadata!("artist");
-                fmt_metadata!("album");
-                fmt_metadata!("album_artist");
-                fmt_metadata!("date");
-                fmt_metadata!("track");
-                fmt_metadata!("genre");
-                fmt_metadata!("composer");
-                fmt_metadata!("comment");
-                fmt_metadata!("disc");
-                fmt_property!("path");
-                fmt_property!("filename");
-
-                if key == "position" {
-                    let position = mpv.get_property("playlist-pos").ok()?.as_u64()?;
-                    return Some((position + 1).to_string());
+                match key {
+                    "n" => Some("\n".to_string()),
+                    "title" => {
+                        if metadata.contains_key("title") {
+                            Some(metadata["title"].as_str()?.to_string())
+                        } else {
+                            Some(mpv.get_property("media-title").ok()?.as_str()?.to_string())
+                        }
+                    }
+                    "artist" | "album" | "album_artist" | "date" | "year" | "track" | "genre" |
+                    "composer" | "comment" | "disc" => {
+                        Some(metadata.get(key)?.as_str()?.to_string())
+                    }
+                    "time" => {
+                        let time = mpv.get_property("playback-time").ok()?.as_f64()?;
+                        Some(format_duration(time as u64))
+                    }
+                    "duration" => {
+                        let duration = mpv.get_property("duration").ok()?.as_f64()?;
+                        Some(format_duration(duration as u64))
+                    }
+                    "percentage" => {
+                        let percent = mpv.get_property("percent-pos").ok()?.as_f64()?;
+                        Some((percent as u64).to_string())
+                    }
+                    "position" => {
+                        let position = mpv.get_property("playlist-pos").ok()?.as_u64()?;
+                        Some((position + 1).to_string())
+                    }
+                    _ => mpv.get_property_string(key).ok(),
                 }
-
-                if key == "playlistlength" {
-                    return mpv.get_property_string("playlist-count").ok();
-                }
-
-                None
             }
 
             let input = format_matches.get_one::<String>("input").unwrap();
             let property = mpv.get_property("metadata")?;
             let metadata = property.as_object().unwrap();
-            // Manually parse the format string instead of naively doing repeated search
-            // and replace operations. This is (most likely) more performant (the entire
-            // string can be parsed in one pass instead of multiple), and issues with
-            // "double replacements" are avoided. e.g. If the format string is "%title%"
-            // and the title metadata in turn contains a valid format string (say "%path%",
-            // unlikely but possible), the resulting output will be incorrect.
+            // Manually parse the format string instead of doing repeated search
+            // and replace operations. This avoids issues with "double replacements".
+            // e.g. If the format string is "%title%" and the title metadata in
+            // turn contains a valid format string (say "%path%", unlikely but possible),
+            // the resulting output will be incorrect.
+            // Despite processing the string in one pass, this is actually slower than the
+            // alternative of repeatedly calling String::replace().
             let mut output = String::with_capacity(input.len());
-            let mut s = 0usize;
+            let mut i = 0usize;
             loop {
-                let sub = &input[s..];
+                let sub = &input[i..];
                 match sub.find('%') {
-                    Some(f) => {
-                        let subf = &sub[f + 1..];
-                        match subf.find('%') {
-                            Some(e) => {
-                                output += &sub[..f];
-                                let fmt = &subf[..e];
+                    Some(start) => {
+                        let sub_fmt = &sub[start + 1..];
+                        match sub_fmt.find('%') {
+                            Some(end) => {
+                                output += &sub[..start];
+                                let fmt = &sub_fmt[..end];
                                 match eval_format(&mut mpv, metadata, fmt) {
                                     Some(m) => {
                                         output += &m;
                                         // If the format string is valid, the
                                         // starting index should be iterated past
-                                        // the ending '%'
-                                        s += f + e + 2;
+                                        // the ending '%'. Add two to account for
+                                        // each delimiter.
+                                        i += start + end + 2;
                                     }
                                     None => {
                                         // If this was not a valid format string, set the index to
                                         // the ending '%'. This is needed in case of unbalanced %'s
-                                        // e.g. "100% Orange Juice %filename%"
-                                        // This string will produce these iterations:
-                                        //   sub[..f] == "100", fmt == " Orange Juice "
-                                        //   fmt == "filename"
+                                        // i.e. the string "100% Orange Juice: %percentage%" will
+                                        // produce the following iterations:
+                                        //   1: sub[..start] == "100", fmt == " Orange Juice: "
+                                        //   2: sub[..start] == "",    fmt == "percentage"
                                         output += "%";
                                         output += fmt;
-                                        s += f + e + 1;
+                                        i += start + end + 1;
                                     }
                                 }
                             }
@@ -497,7 +500,7 @@ fn main() -> Result<(), Error> {
                     }
                 }
             }
-            println!("{}", output);
+            print!("{}", output);
         }
 
         Some(("observe", observe_matches)) => {
