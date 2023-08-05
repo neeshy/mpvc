@@ -160,6 +160,12 @@ fn main() -> Result<(), Error> {
             .about("Retrieves an mpv property (see property 'property-list' for possible values)")
             .arg(Arg::new("property")
                 .required(true)))
+        .subcommand(Command::new("run")
+            .about("Runs an mpv command")
+            .arg(Arg::new("command")
+                .required(true))
+            .arg(Arg::new("args")
+                .num_args(0..)))
         .subcommand(Command::new("metadata")
             .about("Retrieves a metadata attribute from the currently playing file (see property 'metadata' for possible values)")
             .arg(Arg::new("attribute")
@@ -385,6 +391,12 @@ fn main() -> Result<(), Error> {
             let property = get_matches.get_one::<String>("property").unwrap();
             let value = mpv.get_property(property)?;
             println!("{}", value);
+        }
+
+        Some(("run", run_matches)) => {
+            let command = run_matches.get_one::<String>("command").unwrap();
+            let args = run_matches.get_many::<String>("args").unwrap().map(|v| v.as_str()).collect::<Vec<&str>>();
+            mpv.command_arg(command, &args[..])?;
         }
 
         Some(("metadata", metadata_matches)) => {
