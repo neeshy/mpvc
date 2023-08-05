@@ -106,34 +106,29 @@ impl Mpv {
             response = response.trim_end().to_string();
             debug!("Response: {}", response);
 
-            let r = serde_json::from_str::<Value>(&response).map_err(Error::JsonError)?;
+            let mut r = serde_json::from_str::<Map<String, Value>>(&response)
+                .map_err(Error::JsonError)?;
 
-            let mut map = if let Value::Object(map) = r {
-                Ok(map)
-            } else {
-                Err(Error::UnexpectedValue)
-            }?;
-
-            if let Some(Value::Number(ref request_id)) = map.get("request_id") {
+            if let Some(Value::Number(ref request_id)) = r.get("request_id") {
                 if request_id.as_i64() != Some(self.counter) {
                     continue;
                 }
             } else {
-                if let Some(Value::String(_)) = map.get("event") {
-                    self.responses.push(map);
+                if let Some(Value::String(_)) = r.get("event") {
+                    self.responses.push(r);
                 }
                 continue;
             }
 
-            let error = if let Some(Value::String(ref error)) = map.get("error") {
+            let error = if let Some(Value::String(ref error)) = r.get("error") {
                 Ok(error)
             } else {
                 Err(Error::UnexpectedValue)
             }?;
 
             return if error == "success" {
-                if map.contains_key("data") {
-                    Ok(map["data"].take())
+                if r.contains_key("data") {
+                    Ok(r["data"].take())
                 } else {
                     Ok(Value::Null)
                 }
@@ -307,16 +302,13 @@ impl Mpv {
             response = response.trim_end().to_string();
             debug!("Event: {}", response);
 
-            let e = serde_json::from_str::<Value>(&response).map_err(Error::JsonError)?;
+            let e = serde_json::from_str::<Map<String, Value>>(&response)
+                .map_err(Error::JsonError)?;
 
-            if let Value::Object(map) = e {
-                if let Some(Value::String(_)) = map.get("event") {
-                    return Ok(map);
-                } else {
-                    debug!("Bad response: {:?}", response);
-                }
+            if let Some(Value::String(_)) = e.get("event") {
+                return Ok(e);
             } else {
-                return Err(Error::UnexpectedValue);
+                debug!("Bad response: {:?}", response);
             }
         }
     }
