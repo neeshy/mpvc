@@ -182,7 +182,7 @@ fn main() -> Result<(), Error> {
                     %n% (newline)\n\n\
                     Additionally, any valid property may be used.\n\n\
                     The format string may also appear in the form:\n\
-                    \t'%property?consequent:alternative%'\n\
+                    \t%property?consequent:alternative%\n\
                     where the property evaluates to a boolean.")
                 .required(true)))
         .subcommand(Command::new("observe")
@@ -274,17 +274,17 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("playlist", _)) => {
-            let playlist = mpv.get_property("playlist")?;
-            let p = playlist.as_array().unwrap();
-            for (i, entry) in p.iter().enumerate() {
-                let e = entry.as_object().unwrap();
-                let title = if e.contains_key("title") {
-                    e["title"].as_str().unwrap()
+            let property = mpv.get_property("playlist")?;
+            let playlist = property.as_array().unwrap();
+            for (i, e) in playlist.iter().enumerate() {
+                let entry = e.as_object().unwrap();
+                let title = if entry.contains_key("title") {
+                    entry["title"].as_str().unwrap()
                 } else {
-                    e["filename"].as_str().unwrap()
+                    entry["filename"].as_str().unwrap()
                 };
                 let mut output = format!("{}\t{}", i + 1, title);
-                if e.contains_key("current") {
+                if entry.contains_key("current") {
                     output = output.reversed().to_string();
                 }
                 println!("{}", output);
@@ -457,8 +457,8 @@ fn main() -> Result<(), Error> {
             // e.g. If the format string is "%title%" and the title metadata in
             // turn contains a valid format string (say "%path%", unlikely but possible),
             // the resulting output will be incorrect.
-            // Despite processing the string in one pass, this is actually slower than the
-            // alternative of repeatedly calling String::replace().
+            // Despite processing the string in one pass, this is actually slower
+            // than the alternative of repeatedly calling String::replace().
             let mut output = String::with_capacity(input.len());
             let mut i = 0usize;
             loop {
