@@ -244,10 +244,7 @@ fn main() -> Result<(), Error> {
     match matches.subcommand() {
         Some(("play", _)) => mpv.set_property("pause", false)?,
         Some(("pause", _)) => mpv.set_property("pause", true)?,
-        Some(("toggle", _)) => {
-            let pause = mpv.get_property("pause")?.as_bool().unwrap();
-            mpv.set_property("pause", !pause)?;
-        }
+        Some(("toggle", _)) => mpv.command_arg("cycle", &["pause"])?,
         Some(("next", _)) => mpv.command("playlist-next")?,
         Some(("prev", _)) => mpv.command("playlist-prev")?,
         Some(("seek", seek_matches)) => {
@@ -370,13 +367,12 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("mute", mute_matches)) => {
-            let arg = match mute_matches.get_one::<String>("arg").unwrap().as_str() {
-                "on" => true,
-                "off" => false,
-                "toggle" => !mpv.get_property("mute")?.as_bool().unwrap(),
+            match mute_matches.get_one::<String>("arg").unwrap().as_str() {
+                "on" => mpv.set_property("mute", true)?,
+                "off" => mpv.set_property("mute", false)?,
+                "toggle" => mpv.command_arg("cycle", &["mute"])?,
                 _ => unreachable!(),
-            };
-            mpv.set_property("mute", arg)?;
+            }
         }
 
         Some(("set", set_matches)) => {
