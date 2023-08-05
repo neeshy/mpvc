@@ -188,7 +188,10 @@ fn main() -> Result<(), Error> {
                     %position%\n\
                     %playlist-count%\n\
                     %n% (newline)\n\n\
-                    Additionally, any valid property may be used.")
+                    Additionally, any valid property may be used.\n\n\
+                    The format string may also appear in the form:\n\
+                    \t'%property?consequent:alternative%'\n\
+                    where the property evaluates to a boolean.")
                 .required(true)))
         .subcommand(Command::new("observe")
             .about("Prints all mpv events in real-time. Additionally, observes a set of properties and informs about changes")
@@ -403,13 +406,10 @@ fn main() -> Result<(), Error> {
         Some(("format", format_matches)) => {
             fn eval_format(mpv: &mut Mpv, metadata: &Map<String, Value>, key: &str) -> Option<String> {
                 fn format_duration(d: u64) -> String {
-                    let s = d % 60;
-                    let m = (d / 60) % 60;
-                    let h = d / 3600;
-                    if h > 0 {
-                        return format!("{:02}:{:02}:{:02}", h, m, s);
+                    match (d % 60, (d / 60) % 60, d / 3600) {
+                        (s, m, 0) => format!("{:02}:{:02}", m, s),
+                        (s, m, h) => format!("{:02}:{:02}:{:02}", h, m, s),
                     }
-                    return format!("{:02}:{:02}", m, s);
                 }
 
                 match key {
@@ -441,7 +441,20 @@ fn main() -> Result<(), Error> {
                         let position = mpv.get_property("playlist-pos").ok()?.as_u64()?;
                         Some((position + 1).to_string())
                     }
-                    _ => mpv.get_property_string(key).ok(),
+                    _ => {
+                        if let Some(i) = key.find("?") {
+                            let property = &key[..i];
+                            let pair = &key[i + 1..];
+                            let j = pair.find(":")?;
+                            if mpv.get_property(property).ok()?.as_bool()? {
+                                Some(pair[..j].to_string())
+                            } else {
+                                Some(pair[j + 1..].to_string())
+                            }
+                        } else {
+                            mpv.get_property_string(key).ok()
+                        }
+                    }
                 }
             }
 
