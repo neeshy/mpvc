@@ -433,10 +433,10 @@ fn main() -> Result<(), Error> {
                         Some((position + 1).to_string())
                     }
                     _ => {
-                        if let Some(i) = key.find("?") {
+                        if let Some(i) = key.find('?') {
                             let property = &key[..i];
                             let pair = &key[i + 1..];
-                            let j = pair.find(":")?;
+                            let j = pair.find(':')?;
                             if mpv.get_property(property).ok()?.as_bool()? {
                                 Some(pair[..j].to_string())
                             } else {
