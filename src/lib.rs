@@ -94,10 +94,9 @@ impl Mpv {
 
     fn _command(&mut self, command: &Vec<Value>) -> Result<Value, Error> {
         self.counter += 1;
-        let v = json!({"command": command, "request_id": self.counter});
-        let c = &(v.to_string() + "\n");
-        debug!("Command: {}", c.trim_end());
-        self.reader.get_ref().write_all(c.as_bytes())
+        let c = json!({"command": command, "request_id": self.counter}).to_string();
+        debug!("Command: {}", c);
+        self.reader.get_ref().write_all((c + "\n").as_bytes())
             .map_err(|why| Error::WriteError(why.to_string()))?;
         loop {
             let mut response = String::new();
