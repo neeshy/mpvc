@@ -106,7 +106,7 @@ impl Mpv {
             response = response.trim_end().to_string();
             debug!("Response: {}", response);
 
-            let mut r = serde_json::from_str::<Map<String, Value>>(&response)
+            let mut r = serde_json::from_str::<Map<String, Value>>(response.as_str())
                 .map_err(Error::JsonError)?;
 
             if let Some(Value::Number(ref request_id)) = r.get("request_id") {
@@ -302,7 +302,7 @@ impl Mpv {
             response = response.trim_end().to_string();
             debug!("Event: {}", response);
 
-            let e = serde_json::from_str::<Map<String, Value>>(&response)
+            let e = serde_json::from_str::<Map<String, Value>>(response.as_str())
                 .map_err(Error::JsonError)?;
 
             if let Some(Value::String(_)) = e.get("event") {

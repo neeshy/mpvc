@@ -219,7 +219,7 @@ fn main() -> Result<(), Error> {
                         "--no-terminal",
                         "--idle=once",
                         "--vid=no",
-                        &("--input-ipc-server=".to_string() + socket),
+                        ("--input-ipc-server=".to_string() + socket).as_str(),
                     ])
                     .spawn()
                     .expect("mpv failed to start");
@@ -238,7 +238,7 @@ fn main() -> Result<(), Error> {
         Some(("prev", _)) => mpv.command("playlist-prev")?,
         Some(("seek", seek_matches)) => {
             let num = seek_matches.get_one::<String>("num").unwrap();
-            let mode = seek_matches.get_one::<String>("mode").unwrap().as_str();
+            let mode = seek_matches.get_one::<String>("mode").unwrap();
             mpv.command_arg("seek", &[num, mode])?
         }
         Some(("restart", _)) => mpv.command_arg("seek", &["0", "absolute"])?,
@@ -266,7 +266,7 @@ fn main() -> Result<(), Error> {
                     }
                     let pos = mpv.get_property("playlist-pos")?.as_u64().unwrap() as usize + 1;
                     for i in 0..files_len {
-                        mpv.command_arg("playlist-move", &[&(count + i).to_string(), &(pos + i).to_string()])?;
+                        mpv.command_arg("playlist-move", &[(count + i).to_string().as_str(), (pos + i).to_string().as_str()])?;
                     }
                 }
                 _ => unreachable!(),
@@ -308,7 +308,7 @@ fn main() -> Result<(), Error> {
         Some(("play-next", play_next_matches)) => {
             let pos = mpv.get_property("playlist-pos")?.as_u64().unwrap();
             let id = play_next_matches.get_one::<String>("id").unwrap();
-            mpv.command_arg("playlist-move", &[id, &(pos + 1).to_string()])?
+            mpv.command_arg("playlist-move", &[id, (pos + 1).to_string().as_str()])?
         }
 
         Some(("position", position_matches)) => {
@@ -322,7 +322,7 @@ fn main() -> Result<(), Error> {
             let count = mpv.get_property("playlist-count")?.as_u64().unwrap() as usize - 1;
             let count_str = count.to_string();
             for i in 0..count {
-                mpv.command_arg("playlist-move", &[&count_str, &i.to_string()])?;
+                mpv.command_arg("playlist-move", &[count_str.as_str(), i.to_string().as_str()])?;
             }
         }
 
