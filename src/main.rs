@@ -536,9 +536,9 @@ fn main() -> Result<(), Error> {
             let mut watched_properties_first = Vec::<&String>::new();
             loop {
                 let event = mpv.listen()?;
-                if let Some(Value::String(e)) = event.get("event") {
+                if let Some(Value::String(ref e)) = event.get("event") {
                     if e == "property-change" {
-                        if let Some(Value::String(property)) = event.get("name") {
+                        if let Some(Value::String(ref property)) = event.get("name") {
                             if let Some(idx) = watched_properties.iter().position(|v| v == &property) {
                                 if watched_properties_first.contains(&property) {
                                     break;
