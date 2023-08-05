@@ -3,12 +3,12 @@ extern crate serde;
 extern crate serde_json;
 
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Write};
 use std::os::unix::net::UnixStream;
 
 use log::debug;
 use serde::ser::Serialize;
-use serde_json::{json, Map, Value};
+use serde_json::{json, Error as JsonError, Map, Value};
 
 pub struct Mpv {
     path: String,
@@ -43,10 +43,10 @@ impl Clone for Mpv {
 
 pub enum Error {
     MpvError(String),
-    JsonParseError(String),
-    ConnectError(String),
-    ReadError(String),
-    WriteError(String),
+    ConnectError(IoError),
+    ReadError(IoError),
+    WriteError(IoError),
+    JsonError(JsonError),
     UnexpectedValue,
     MissingValue,
 }
@@ -54,11 +54,11 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            Error::ConnectError(ref msg) => write!(f, "ConnectError: {}", msg),
-            Error::ReadError(ref msg) => write!(f, "ReadError: {}", msg),
-            Error::WriteError(ref msg) => write!(f, "WriteError: {}", msg),
-            Error::JsonParseError(ref msg) => write!(f, "JsonParseError: {}", msg),
-            Error::MpvError(ref msg) => write!(f, "MpvError: {}", msg),
+            Error::MpvError(ref e) => write!(f, "MpvError: {}", e),
+            Error::ConnectError(ref e) => write!(f, "ConnectError: {}", e),
+            Error::ReadError(ref e) => write!(f, "ReadError: {}", e),
+            Error::WriteError(ref e) => write!(f, "WriteError: {}", e),
+            Error::JsonError(ref e) => write!(f, "JsonError: {}", e),
             Error::UnexpectedValue => write!(f, "Unexpected value received"),
             Error::MissingValue => write!(f, "Missing value"),
         }
@@ -80,7 +80,7 @@ impl Mpv {
                 responses: Vec::new(),
                 counter: -1,
             }),
-            Err(why) => Err(Error::ConnectError(why.to_string())),
+            Err(e) => Err(Error::ConnectError(e)),
         }
     }
 
@@ -96,20 +96,17 @@ impl Mpv {
         self.counter += 1;
         let c = json!({"command": command, "request_id": self.counter}).to_string();
         debug!("Command: {}", c);
-        self.reader.get_ref().write_all((c + "\n").as_bytes())
-            .map_err(|why| Error::WriteError(why.to_string()))?;
+        self.reader.get_ref().write_all((c + "\n").as_bytes()).map_err(Error::WriteError)?;
         loop {
             let mut response = String::new();
-            let n = self.reader.read_line(&mut response)
-                .map_err(|why| Error::ReadError(why.to_string()))?;
+            let n = self.reader.read_line(&mut response).map_err(Error::ReadError)?;
             if n == 0 {
-                return Err(Error::ReadError("EOF reached".to_string()));
+                return Err(Error::ReadError(IoError::from(IoErrorKind::UnexpectedEof)));
             }
             response = response.trim_end().to_string();
             debug!("Response: {}", response);
 
-            let r = serde_json::from_str::<Value>(&response)
-                .map_err(|why| Error::JsonParseError(why.to_string()))?;
+            let r = serde_json::from_str::<Value>(&response).map_err(Error::JsonError)?;
 
             let mut map = if let Value::Object(map) = r {
                 Ok(map)
@@ -303,16 +300,14 @@ impl Mpv {
         }
         loop {
             let mut response = String::new();
-            let n = self.reader.read_line(&mut response)
-                .map_err(|why| Error::ReadError(why.to_string()))?;
+            let n = self.reader.read_line(&mut response).map_err(Error::ReadError)?;
             if n == 0 {
-                return Err(Error::ReadError("EOF reached".to_string()));
+                return Err(Error::ReadError(IoError::from(IoErrorKind::UnexpectedEof)));
             }
             response = response.trim_end().to_string();
             debug!("Event: {}", response);
 
-            let e = serde_json::from_str::<Value>(&response)
-                .map_err(|why| Error::JsonParseError(why.to_string()))?;
+            let e = serde_json::from_str::<Value>(&response).map_err(Error::JsonError)?;
 
             if let Value::Object(map) = e {
                 if let Some(Value::String(_)) = map.get("event") {
@@ -328,10 +323,9 @@ impl Mpv {
 
     pub fn listen_raw(&mut self) -> Result<String, Error> {
         let mut response = String::new();
-        let n = self.reader.read_line(&mut response)
-            .map_err(|why| Error::ReadError(why.to_string()))?;
+        let n = self.reader.read_line(&mut response).map_err(Error::ReadError)?;
         if n == 0 {
-            return Err(Error::ReadError("EOF reached".to_string()));
+            return Err(Error::ReadError(IoError::from(IoErrorKind::UnexpectedEof)));
         }
         Ok(response.trim_end().to_string())
     }
