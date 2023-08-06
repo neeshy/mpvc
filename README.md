@@ -1,4 +1,4 @@
-![mpvc screenshot](https://gitlab.com/mpv-ipc/mpvc/raw/master/res/logo.png "logo")
+![mpvc screenshot](https://raw.githubusercontent.com/neeshy/mpvc/master/res/logo.png "logo")
 # mpvc
 
 An mpc-like cli tool for mpv.
