@@ -8,7 +8,7 @@ use std::os::unix::net::UnixStream;
 
 use log::debug;
 use serde::ser::Serialize;
-use serde_json::{json, Error as JsonError, Map, Value};
+use serde_json::{json, Error as JsonError, Map, Number, Value};
 
 pub struct Mpv {
     path: String,
@@ -140,37 +140,48 @@ impl Mpv {
 
     /// # Description
     ///
-    /// Runs mpv commands. The arguments are passed as a String-Vector reference:
-    ///
-    /// ## Input arguments
-    ///
-    /// - **command**   defines the mpv command that should be executed
-    /// - **args**      a slice of &str's which define the arguments
+    /// Run an mpv command. The arguments are passed as a JSON array:
     ///
     /// # Example
     /// ```
     /// use mpvipc::{Mpv, Error};
     /// fn main() -> Result<(), Error> {
     ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///     mpv.command_arg("seek", &["0", "absolute"])?;
+    ///     mpv.command_arg("add", json!(["volume", 20.0]).as_array().unwrap())?;
     ///     Ok(())
     /// }
     /// ```
-    pub fn command_arg(&mut self, command: &str, args: &[&str]) -> Result<(), Error> {
+    pub fn command_arg(&mut self, command: &str, args: &Vec<Value>) -> Result<(), Error> {
         let mut a = Vec::with_capacity(args.len() + 1);
-        a.push(Value::String(command.to_string()));
-        a.extend(args.iter().map(|v| Value::String(v.to_string())));
-        // XXX: Drop return value for now, change interface if needed
+        a.push(command.into());
+        a.extend(args.iter().cloned());
+        // XXX: Drop return value for now, change interface later if needed
         self._command(&a).map(|_| ())
     }
 
     /// # Description
     ///
-    /// Runs mpv commands.
+    /// Run an mpv command. The arguments are passed as a reference to a slice of strings.
     ///
-    /// ## Input arguments
+    /// # Example
+    /// ```
+    /// use mpvipc::{Mpv, Error};
+    /// fn main() -> Result<(), Error> {
+    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    ///     mpv.command_str("seek", &["0", "absolute"])?;
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn command_str(&mut self, command: &str, args: &[&str]) -> Result<(), Error> {
+        let mut a = Vec::with_capacity(args.len() + 1);
+        a.push(command.into());
+        a.extend(args.iter().map(|v| (*v).into()));
+        self._command(&a).map(|_| ())
+    }
+
+    /// # Description
     ///
-    /// - **command**   defines the mpv command that should be executed
+    /// Run an mpv command without any arguments.
     ///
     /// # Example
     /// ```
@@ -182,16 +193,12 @@ impl Mpv {
     /// }
     /// ```
     pub fn command(&mut self, command: &str) -> Result<(), Error> {
-        self._command(&vec![Value::String(command.to_string())]).map(|_| ())
+        self._command(&vec![command.into()]).map(|_| ())
     }
 
     /// # Description
     ///
-    /// Retrieves the property value from mpv.
-    ///
-    /// ## Input arguments
-    ///
-    /// - **property** defines the mpv property that should be retrieved
+    /// Retrieve a property from mpv.
     ///
     /// # Example
     /// ```
@@ -204,17 +211,12 @@ impl Mpv {
     /// }
     /// ```
     pub fn get_property(&mut self, property: &str) -> Result<Value, Error> {
-        self._command(json!(["get_property", property]).as_array().unwrap())
+        self._command(&vec!["get_property".into(), property.into()])
     }
 
     /// # Description
     ///
-    /// Retrieves the property value from mpv.
-    /// The result is always of type String, regardless of the type of the value of the mpv property
-    ///
-    /// ## Input arguments
-    ///
-    /// - **property** defines the mpv property that should be retrieved
+    /// Retrieve a property from mpv and convert it to a string.
     ///
     /// # Example
     ///
@@ -239,12 +241,7 @@ impl Mpv {
 
     /// # Description
     ///
-    /// Sets the mpv property _<property>_ to _<value>_.
-    ///
-    /// ## Input arguments
-    ///
-    /// - **property** defines the mpv property that should be retrieved
-    /// - **value** defines the value of the given mpv property _<property>_
+    /// Set an mpv property.
     ///
     /// # Example
     /// ```
@@ -256,24 +253,31 @@ impl Mpv {
     /// }
     /// ```
     pub fn set_property<T: Serialize>(&mut self, property: &str, value: T) -> Result<(), Error> {
-        self._command(json!(["set_property", property, value]).as_array().unwrap()).map(|_| ())
+        self._command(&vec!["set_property".into(), property.into(),
+            serde_json::to_value(&value).map_err(Error::JsonError)?]).map(|_| ())
     }
 
     pub fn add_property(&mut self, property: &str, value: f64) -> Result<(), Error> {
-        self._command(json!(["add", property, value]).as_array().unwrap()).map(|_| ())
+        self._command(&vec!["add".into(), property.into(),
+            Value::Number(Number::from_f64(value).ok_or(Error::UnexpectedValue)?)]).map(|_| ())
+    }
+
+    pub fn multiply_property(&mut self, property: &str, value: f64) -> Result<(), Error> {
+        self._command(&vec!["multiply".into(), property.into(),
+            Value::Number(Number::from_f64(value).ok_or(Error::UnexpectedValue)?)]).map(|_| ())
     }
 
     pub fn observe_property(&mut self, id: isize, property: &str) -> Result<(), Error> {
-        self._command(json!(["observe_property", id, property]).as_array().unwrap()).map(|_| ())
+        self._command(&vec!["observe_property".into(), id.into(), property.into()]).map(|_| ())
     }
 
     pub fn unobserve_property(&mut self, id: isize) -> Result<(), Error> {
-        self._command(json!(["unobserve_property", id]).as_array().unwrap()).map(|_| ())
+        self._command(&vec!["unobserve_property".into(), id.into()]).map(|_| ())
     }
 
     /// # Description
     ///
-    /// Blocks until an mpv event occurs and returns the event.
+    /// Block until an mpv event occurs and return the event.
     ///
     /// # Example
     ///
