@@ -140,7 +140,7 @@ impl Mpv {
 
     /// # Description
     ///
-    /// Run an mpv command. The arguments are passed as a JSON array:
+    /// Run an mpv command. The arguments are passed as a JSON array.
     ///
     /// # Example
     /// ```
