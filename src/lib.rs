@@ -259,12 +259,12 @@ impl Mpv {
 
     pub fn add_property(&mut self, property: &str, value: f64) -> Result<(), Error> {
         self._command(&vec!["add".into(), property.into(),
-            Value::Number(Number::from_f64(value).ok_or(Error::UnexpectedValue)?)]).map(|_| ())
+            Number::from_f64(value).ok_or(Error::UnexpectedValue)?.into()]).map(|_| ())
     }
 
     pub fn multiply_property(&mut self, property: &str, value: f64) -> Result<(), Error> {
         self._command(&vec!["multiply".into(), property.into(),
-            Value::Number(Number::from_f64(value).ok_or(Error::UnexpectedValue)?)]).map(|_| ())
+            Number::from_f64(value).ok_or(Error::UnexpectedValue)?.into()]).map(|_| ())
     }
 
     pub fn observe_property(&mut self, id: isize, property: &str) -> Result<(), Error> {
