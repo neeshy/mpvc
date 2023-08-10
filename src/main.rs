@@ -14,6 +14,17 @@ use clap::{Arg, Command};
 use colored::Colorize;
 use serde_json::{Map, Value};
 
+fn value_to_string(v: &Value) -> Result<String, Error> {
+    match v {
+        Value::Bool(b) => Ok(b.to_string()),
+        Value::Number(ref n) => Ok(n.to_string()),
+        Value::String(ref s) => Ok(s.to_string()),
+        Value::Array(_) => Ok(v.to_string()),
+        Value::Object(_) => Ok(v.to_string()),
+        Value::Null => Err(Error::MissingValue),
+    }
+}
+
 fn main() -> Result<(), Error> {
     let matches = Command::new(env!("CARGO_CRATE_NAME"))
         .subcommand_required(true)
@@ -330,7 +341,7 @@ fn main() -> Result<(), Error> {
             let arg = match loop_file_matches.get_one::<String>("arg").unwrap().as_str() {
                 "on" => true,
                 "off" => false,
-                "toggle" => matches!(mpv.get_property_string("loop-file")?.as_str(), "false"),
+                "toggle" => matches!(value_to_string(&mpv.get_property("loop-file")?)?.as_str(), "false"),
                 _ => unreachable!(),
             };
             mpv.set_property("loop-file", arg)?;
@@ -340,7 +351,7 @@ fn main() -> Result<(), Error> {
             let arg = match loop_playlist_matches.get_one::<String>("arg").unwrap().as_str() {
                 "on" => true,
                 "off" => false,
-                "toggle" => matches!(mpv.get_property_string("loop-playlist")?.as_str(), "false"),
+                "toggle" => matches!(value_to_string(&mpv.get_property("loop-playlist")?)?.as_str(), "false"),
                 _ => unreachable!(),
             };
             mpv.set_property("loop-playlist", arg)?;
@@ -387,11 +398,7 @@ fn main() -> Result<(), Error> {
             let property = mpv.get_property("metadata")?;
             let metadata = property.as_object().unwrap();
             let value = metadata.get(attribute).ok_or(Error::MpvError("metadata attribute not found".to_string()))?;
-            if let Value::String(ref v) = value {
-                println!("{}", v);
-            } else {
-                println!("{:?}", value);
-            }
+            println!("{}", value_to_string(value)?);
         }
 
         Some(("format", format_matches)) => {
@@ -443,7 +450,7 @@ fn main() -> Result<(), Error> {
                                 Some(pair[j + 1..].to_string())
                             }
                         } else {
-                            mpv.get_property_string(key).ok()
+                            value_to_string(&mpv.get_property(key).ok()?).ok()
                         }
                     }
                 }

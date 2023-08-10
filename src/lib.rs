@@ -216,32 +216,6 @@ impl Mpv {
 
     /// # Description
     ///
-    /// Retrieve a property from mpv and convert it to a string.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use mpvipc::{Mpv, Error};
-    /// fn main() -> Result<(), Error> {
-    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///     let title = mpv.get_property_string("media-title")?;
-    ///     Ok(())
-    /// }
-    /// ```
-    pub fn get_property_string(&mut self, property: &str) -> Result<String, Error> {
-        let p = self.get_property(property)?;
-        match p {
-            Value::Bool(b) => Ok(b.to_string()),
-            Value::Number(ref n) => Ok(n.to_string()),
-            Value::String(ref s) => Ok(s.to_string()),
-            Value::Array(_) => Ok(p.to_string()),
-            Value::Object(_) => Ok(p.to_string()),
-            Value::Null => Err(Error::MissingValue),
-        }
-    }
-
-    /// # Description
-    ///
     /// Set an mpv property.
     ///
     /// # Example
