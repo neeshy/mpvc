@@ -415,12 +415,15 @@ fn main() -> Result<(), Error> {
 
         Some(("run", run_matches)) => {
             let command = run_matches.get_one::<String>("command").unwrap();
-            let args = run_matches.get_many::<String>("args").unwrap();
-            let json = run_matches.get_one::<bool>("json").unwrap();
-            let args = if *json {
-                args.map(|v| serde_json::from_str(v).map_err(Error::JsonError)).collect::<Result<Vec<Value>, Error>>()?
-            } else {
-                args.map(|v| v.as_str().into()).collect()
+            let args = match run_matches.get_many::<String>("args") {
+                Some(a) => {
+                    if *run_matches.get_one::<bool>("json").unwrap() {
+                        a.map(|v| serde_json::from_str(v).map_err(Error::JsonError)).collect::<Result<Vec<Value>, Error>>()?
+                    } else {
+                        a.map(|v| v.as_str().into()).collect()
+                    }
+                }
+                None => Vec::new(),
             };
             mpv.command_arg(command, &args)?;
         }
