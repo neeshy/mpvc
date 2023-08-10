@@ -456,7 +456,7 @@ fn main() -> Result<(), Error> {
                     }
                     "artist" | "album" | "album_artist" | "date" | "year" | "track" | "genre" |
                     "composer" | "comment" | "disc" => {
-                        Some(metadata.get(key)?.as_str()?.to_string())
+                        Some(value_to_string(metadata.get(key)?).ok()?)
                     }
                     "time" => {
                         let time = mpv.get_property("playback-time").ok()?.as_f64()?;
