@@ -293,18 +293,11 @@ impl Mpv {
     /// }
     /// ```
     pub fn listen(&mut self) -> Result<Map<String, Value>, Error> {
-        // sometimes we get responses unrelated to events, so we read a new line until we receive one
-        // with an event field
         if !self.responses.is_empty() {
             return Ok(self.responses.remove(0));
         }
         loop {
-            let mut response = String::new();
-            let n = self.reader.read_line(&mut response).map_err(Error::ReadError)?;
-            if n == 0 {
-                return Err(Error::ReadError(IoError::from(IoErrorKind::UnexpectedEof)));
-            }
-            response = response.trim_end().to_string();
+            let response = self.listen_raw()?;
             debug!("Event: {}", response);
 
             let e = serde_json::from_str::<Map<String, Value>>(response.as_str())
