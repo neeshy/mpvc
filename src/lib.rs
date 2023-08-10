@@ -229,12 +229,13 @@ impl Mpv {
     /// }
     /// ```
     pub fn get_property_string(&mut self, property: &str) -> Result<String, Error> {
-        match self.get_property(property)? {
+        let p = self.get_property(property)?;
+        match p {
             Value::Bool(b) => Ok(b.to_string()),
             Value::Number(ref n) => Ok(n.to_string()),
             Value::String(ref s) => Ok(s.to_string()),
-            Value::Array(ref array) => Ok(format!("{:?}", array)),
-            Value::Object(ref map) => Ok(format!("{:?}", map)),
+            Value::Array(_) => Ok(p.to_string()),
+            Value::Object(_) => Ok(p.to_string()),
             Value::Null => Err(Error::MissingValue),
         }
     }
