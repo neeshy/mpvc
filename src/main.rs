@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use mpvc::{Error, Mpv};
 
-use clap::{Arg, Command};
+use clap::{Arg, ArgAction, Command};
 use colored::Colorize;
 use serde_json::{Map, Value};
 
@@ -150,16 +150,31 @@ fn main() -> Result<(), Error> {
                 .required(true)))
         .subcommand(Command::new("set")
             .about("Set a property to the given value")
+            .arg(Arg::new("json")
+                .help("Parse <value> as JSON")
+                .short('j')
+                .long("json")
+                .action(ArgAction::SetTrue))
             .arg(Arg::new("property")
                 .required(true))
             .arg(Arg::new("value")
                 .required(true)))
         .subcommand(Command::new("get")
             .about("Retrieve a property (see property 'property-list' for possible values)")
+            .arg(Arg::new("json")
+                .help("Print property as JSON")
+                .short('j')
+                .long("json")
+                .action(ArgAction::SetTrue))
             .arg(Arg::new("property")
                 .required(true)))
         .subcommand(Command::new("run")
             .about("Run an mpv command")
+            .arg(Arg::new("json")
+                .help("Parse each value of <args> as JSON")
+                .short('j')
+                .long("json")
+                .action(ArgAction::SetTrue))
             .arg(Arg::new("command")
                 .required(true))
             .arg(Arg::new("args")
@@ -378,19 +393,36 @@ fn main() -> Result<(), Error> {
         Some(("set", set_matches)) => {
             let property = set_matches.get_one::<String>("property").unwrap();
             let value = set_matches.get_one::<String>("value").unwrap();
+            let json = set_matches.get_one::<bool>("json").unwrap();
+            let value = if *json {
+                serde_json::from_str::<Value>(value).map_err(Error::JsonError)?
+            } else {
+                value.as_str().into()
+            };
             mpv.set_property(property, value)?;
         }
 
         Some(("get", get_matches)) => {
             let property = get_matches.get_one::<String>("property").unwrap();
+            let json = get_matches.get_one::<bool>("json").unwrap();
             let value = mpv.get_property(property)?;
-            println!("{}", value);
+            if *json {
+                println!("{}", value)
+            } else {
+                println!("{}", value_to_string(&value)?);
+            }
         }
 
         Some(("run", run_matches)) => {
             let command = run_matches.get_one::<String>("command").unwrap();
-            let args = run_matches.get_many::<String>("args").unwrap().map(|v| v.as_str()).collect::<Vec<&str>>();
-            mpv.command_str(command, &args[..])?;
+            let args = run_matches.get_many::<String>("args").unwrap();
+            let json = run_matches.get_one::<bool>("json").unwrap();
+            let args = if *json {
+                args.map(|v| serde_json::from_str(v).map_err(Error::JsonError)).collect::<Result<Vec<Value>, Error>>()?
+            } else {
+                args.map(|v| v.as_str().into()).collect()
+            };
+            mpv.command_arg(command, &args)?;
         }
 
         Some(("metadata", metadata_matches)) => {
