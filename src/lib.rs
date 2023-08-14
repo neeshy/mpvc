@@ -1,5 +1,4 @@
 extern crate log;
-extern crate serde;
 extern crate serde_json;
 
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
