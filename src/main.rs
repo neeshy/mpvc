@@ -298,7 +298,7 @@ fn main() -> Result<(), Error> {
                     }
                     let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize + 1;
                     for i in 0..files_len {
-                        mpv.command_arg("playlist-move", &vec![(count + i).into(), (pos + i).into()])?;
+                        mpv.command_arg("playlist-move", &[(count + i).into(), (pos + i).into()])?;
                     }
                 }
                 _ => unreachable!(),
@@ -328,19 +328,19 @@ fn main() -> Result<(), Error> {
 
         Some(("remove", remove_matches)) => {
             let id = *remove_matches.get_one::<usize>("id").unwrap();
-            mpv.command_arg("playlist-remove", &vec![id.into()])?;
+            mpv.command_arg("playlist-remove", &[id.into()])?;
         }
 
         Some(("move", move_matches)) => {
             let from = *move_matches.get_one::<usize>("from").unwrap();
             let to = *move_matches.get_one::<usize>("to").unwrap();
-            mpv.command_arg("playlist-move", &vec![from.into(), to.into()])?
+            mpv.command_arg("playlist-move", &[from.into(), to.into()])?
         }
 
         Some(("play-next", play_next_matches)) => {
             let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)?;
             let id = *play_next_matches.get_one::<usize>("id").unwrap();
-            mpv.command_arg("playlist-move", &vec![id.into(), (pos + 1).into()])?
+            mpv.command_arg("playlist-move", &[id.into(), (pos + 1).into()])?
         }
 
         Some(("position", position_matches)) => {
@@ -353,7 +353,7 @@ fn main() -> Result<(), Error> {
         Some(("reverse", _)) => {
             let count = mpv.get_property("playlist-count")?.as_u64().ok_or(Error::UnexpectedValue)? as usize - 1;
             for i in 0..count {
-                mpv.command_arg("playlist-move", &vec![count.into(), i.into()])?;
+                mpv.command_arg("playlist-move", &[count.into(), i.into()])?;
             }
         }
 
@@ -430,7 +430,7 @@ fn main() -> Result<(), Error> {
                 }
                 None => Vec::new(),
             };
-            mpv.command_arg(command, &args)?;
+            mpv.command_arg(command, args.as_ref())?;
         }
 
         Some(("metadata", metadata_matches)) => {

@@ -93,7 +93,7 @@ impl Mpv {
         self._disconnect();
     }
 
-    fn _command(&mut self, command: &Vec<Value>) -> Result<Value, Error> {
+    fn _command(&mut self, command: &[Value]) -> Result<Value, Error> {
         self.counter += 1;
         let c = json!({"command": command, "request_id": self.counter}).to_string();
         debug!("Command: {}", c);
@@ -148,14 +148,14 @@ impl Mpv {
     ///
     /// ```
     /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    /// mpv.command_arg("quit", &vec![4.into()])?;
+    /// mpv.command_arg("quit", &[4.into()])?;
     /// ```
-    pub fn command_arg(&mut self, command: &str, args: &Vec<Value>) -> Result<(), Error> {
+    pub fn command_arg(&mut self, command: &str, args: &[Value]) -> Result<(), Error> {
         let mut a = Vec::with_capacity(args.len() + 1);
         a.push(command.into());
         a.extend(args.iter().cloned());
         // XXX: Drop return value for now, change interface later if needed
-        self._command(&a).map(|_| ())
+        self._command(a.as_ref()).map(|_| ())
     }
 
     /// Run an mpv command. The arguments are passed as a reference to a slice of strings.
@@ -168,7 +168,7 @@ impl Mpv {
         let mut a = Vec::with_capacity(args.len() + 1);
         a.push(command.into());
         a.extend(args.iter().map(|v| (*v).into()));
-        self._command(&a).map(|_| ())
+        self._command(a.as_ref()).map(|_| ())
     }
 
     /// Run an mpv command without any arguments.
@@ -178,7 +178,7 @@ impl Mpv {
     /// mpv.command("playlist-shuffle")?;
     /// ```
     pub fn command(&mut self, command: &str) -> Result<(), Error> {
-        self._command(&vec![command.into()]).map(|_| ())
+        self._command(&[command.into()]).map(|_| ())
     }
 
     /// Retrieve a property from mpv.
@@ -188,7 +188,7 @@ impl Mpv {
     /// let paused = mpv.get_property("pause")?.as_bool().ok_or(Error::UnexpectedValue)?;
     /// ```
     pub fn get_property(&mut self, property: &str) -> Result<Value, Error> {
-        self._command(&vec!["get_property".into(), property.into()])
+        self._command(&["get_property".into(), property.into()])
     }
 
     /// Set an mpv property to the given value.
@@ -198,7 +198,7 @@ impl Mpv {
     /// mpv.set_property("pause", true)?;
     /// ```
     pub fn set_property<T: Into<Value>>(&mut self, property: &str, value: T) -> Result<(), Error> {
-        self._command(&vec!["set_property".into(), property.into(), value.into()]).map(|_| ())
+        self._command(&["set_property".into(), property.into(), value.into()]).map(|_| ())
     }
 
     /// Add the given value to an mpv property. Runs the 'add' mpv command.
@@ -208,7 +208,7 @@ impl Mpv {
     /// mpv.add_property("volume", 20.0)?;
     /// ```
     pub fn add_property(&mut self, property: &str, value: f64) -> Result<(), Error> {
-        self._command(&vec!["add".into(), property.into(),
+        self._command(&["add".into(), property.into(),
             Number::from_f64(value).ok_or(Error::UnexpectedValue)?.into()]).map(|_| ())
     }
 
@@ -219,18 +219,18 @@ impl Mpv {
     /// mpv.multiply_property("speed", 2.0)?;
     /// ```
     pub fn multiply_property(&mut self, property: &str, value: f64) -> Result<(), Error> {
-        self._command(&vec!["multiply".into(), property.into(),
+        self._command(&["multiply".into(), property.into(),
             Number::from_f64(value).ok_or(Error::UnexpectedValue)?.into()]).map(|_| ())
     }
 
     /// Watch a property for changes. Runs the 'observe_property' mpv command.
     pub fn observe_property(&mut self, id: isize, property: &str) -> Result<(), Error> {
-        self._command(&vec!["observe_property".into(), id.into(), property.into()]).map(|_| ())
+        self._command(&["observe_property".into(), id.into(), property.into()]).map(|_| ())
     }
 
     /// Undo the corresponding 'observe_property'. Runs the 'unobserve_property' mpv command.
     pub fn unobserve_property(&mut self, id: isize) -> Result<(), Error> {
-        self._command(&vec!["unobserve_property".into(), id.into()]).map(|_| ())
+        self._command(&["unobserve_property".into(), id.into()]).map(|_| ())
     }
 
     /// Block until an mpv event occurs and return the event.
