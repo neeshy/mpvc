@@ -47,7 +47,7 @@ fn main() -> Result<(), Error> {
         .subcommand(Command::new("seek")
             .about("Set the playback position. By default seeks by a relative amount of seconds. \
                    You may use negative values.")
-            .arg(Arg::new("num")
+            .arg(Arg::new("target")
                 .required(true))
             .arg(Arg::new("mode")
                 .short('m')
@@ -96,21 +96,26 @@ fn main() -> Result<(), Error> {
             .about("Remove the given entry from the playlist (0-indexed). If the entry is currently playing, playback will stop.")
             .visible_alias("rm")
             .arg(Arg::new("id")
+                .value_parser(str::parse::<usize>)
                 .required(true)))
         .subcommand(Command::new("move")
             .about("Move the given playlist entry to a new position")
             .visible_alias("mv")
             .arg(Arg::new("from")
+                .value_parser(str::parse::<usize>)
                 .required(true))
             .arg(Arg::new("to")
+                .value_parser(str::parse::<usize>)
                 .required(true)))
         .subcommand(Command::new("play-next")
             .about("Move the given playlist entry to be after the currently playing file")
             .arg(Arg::new("id")
+                .value_parser(str::parse::<usize>)
                 .required(true)))
         .subcommand(Command::new("position")
             .about("Play the given entry in the playlist")
             .arg(Arg::new("id")
+                .value_parser(str::parse::<usize>)
                 .required(true)))
         .subcommand(Command::new("shuffle")
             .about("Shuffle the playlist"))
@@ -132,6 +137,7 @@ fn main() -> Result<(), Error> {
         .subcommand(Command::new("volume")
             .about("Control the volume level")
             .arg(Arg::new("num")
+                .value_parser(str::parse::<f64>)
                 .required(true))
             .arg(Arg::new("mode")
                 .short('m')
@@ -263,9 +269,9 @@ fn main() -> Result<(), Error> {
         Some(("next", _)) => mpv.command("playlist-next")?,
         Some(("prev", _)) => mpv.command("playlist-prev")?,
         Some(("seek", seek_matches)) => {
-            let num = seek_matches.get_one::<String>("num").unwrap();
+            let target = seek_matches.get_one::<String>("target").unwrap();
             let mode = seek_matches.get_one::<String>("mode").unwrap();
-            mpv.command_str("seek", &[num, mode])?
+            mpv.command_str("seek", &[target, mode])?
         }
         Some(("restart", _)) => mpv.command_str("seek", &["0", "absolute"])?,
         Some(("kill", _)) => mpv.command("quit")?,
@@ -292,7 +298,7 @@ fn main() -> Result<(), Error> {
                     }
                     let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize + 1;
                     for i in 0..files_len {
-                        mpv.command_str("playlist-move", &[(count + i).to_string().as_str(), (pos + i).to_string().as_str()])?;
+                        mpv.command_arg("playlist-move", &vec![(count + i).into(), (pos + i).into()])?;
                     }
                 }
                 _ => unreachable!(),
@@ -321,24 +327,24 @@ fn main() -> Result<(), Error> {
         Some(("clear", _)) => mpv.command("playlist-clear")?,
 
         Some(("remove", remove_matches)) => {
-            let id = remove_matches.get_one::<String>("id").unwrap();
-            mpv.command_str("playlist-remove", &[id])?;
+            let id = *remove_matches.get_one::<usize>("id").unwrap();
+            mpv.command_arg("playlist-remove", &vec![id.into()])?;
         }
 
         Some(("move", move_matches)) => {
-            let from = move_matches.get_one::<String>("from").unwrap();
-            let to = move_matches.get_one::<String>("to").unwrap();
-            mpv.command_str("playlist-move", &[from, to])?
+            let from = *move_matches.get_one::<usize>("from").unwrap();
+            let to = *move_matches.get_one::<usize>("to").unwrap();
+            mpv.command_arg("playlist-move", &vec![from.into(), to.into()])?
         }
 
         Some(("play-next", play_next_matches)) => {
             let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)?;
-            let id = play_next_matches.get_one::<String>("id").unwrap();
-            mpv.command_str("playlist-move", &[id, (pos + 1).to_string().as_str()])?
+            let id = *play_next_matches.get_one::<usize>("id").unwrap();
+            mpv.command_arg("playlist-move", &vec![id.into(), (pos + 1).into()])?
         }
 
         Some(("position", position_matches)) => {
-            let id = position_matches.get_one::<String>("id").unwrap().parse::<usize>().unwrap();
+            let id = *position_matches.get_one::<usize>("id").unwrap();
             mpv.set_property("playlist-pos", id)?
         }
 
@@ -346,9 +352,8 @@ fn main() -> Result<(), Error> {
 
         Some(("reverse", _)) => {
             let count = mpv.get_property("playlist-count")?.as_u64().ok_or(Error::UnexpectedValue)? as usize - 1;
-            let count_str = count.to_string();
             for i in 0..count {
-                mpv.command_str("playlist-move", &[count_str.as_str(), i.to_string().as_str()])?;
+                mpv.command_arg("playlist-move", &vec![count.into(), i.into()])?;
             }
         }
 
@@ -373,7 +378,7 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("volume", volume_matches)) => {
-            let num = volume_matches.get_one::<String>("num").unwrap().parse::<f64>().unwrap();
+            let num = *volume_matches.get_one::<f64>("num").unwrap();
             match volume_matches.get_one::<String>("mode").unwrap().as_str() {
                 "absolute" => mpv.set_property("volume", num)?,
                 "relative" => mpv.add_property("volume", num)?,
