@@ -286,11 +286,11 @@ fn main() -> Result<(), Error> {
                 "append-next" => {
                     let files = add_matches.get_many::<String>("file").unwrap();
                     let files_len = files.len();
-                    let count = mpv.get_property("playlist-count")?.as_u64().unwrap() as usize;
+                    let count = mpv.get_property("playlist-count")?.as_u64().ok_or(Error::UnexpectedValue)? as usize;
                     for file in files {
                         mpv.command_str(command, &[file, "append"])?;
                     }
-                    let pos = mpv.get_property("playlist-pos")?.as_u64().unwrap() as usize + 1;
+                    let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize + 1;
                     for i in 0..files_len {
                         mpv.command_str("playlist-move", &[(count + i).to_string().as_str(), (pos + i).to_string().as_str()])?;
                     }
@@ -301,13 +301,13 @@ fn main() -> Result<(), Error> {
 
         Some(("playlist", _)) => {
             let property = mpv.get_property("playlist")?;
-            let playlist = property.as_array().unwrap();
+            let playlist = property.as_array().ok_or(Error::UnexpectedValue)?;
             for (i, e) in playlist.iter().enumerate() {
-                let entry = e.as_object().unwrap();
+                let entry = e.as_object().ok_or(Error::UnexpectedValue)?;
                 let title = if entry.contains_key("title") {
-                    entry["title"].as_str().unwrap()
+                    entry["title"].as_str().ok_or(Error::UnexpectedValue)?
                 } else {
-                    entry["filename"].as_str().unwrap()
+                    entry["filename"].as_str().ok_or(Error::UnexpectedValue)?
                 };
                 let mut output = format!("{}\t{}", i + 1, title);
                 if entry.contains_key("current") {
@@ -332,7 +332,7 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("play-next", play_next_matches)) => {
-            let pos = mpv.get_property("playlist-pos")?.as_u64().unwrap();
+            let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)?;
             let id = play_next_matches.get_one::<String>("id").unwrap();
             mpv.command_str("playlist-move", &[id, (pos + 1).to_string().as_str()])?
         }
@@ -345,7 +345,7 @@ fn main() -> Result<(), Error> {
         Some(("shuffle", _)) => mpv.command("playlist-shuffle")?,
 
         Some(("reverse", _)) => {
-            let count = mpv.get_property("playlist-count")?.as_u64().unwrap() as usize - 1;
+            let count = mpv.get_property("playlist-count")?.as_u64().ok_or(Error::UnexpectedValue)? as usize - 1;
             let count_str = count.to_string();
             for i in 0..count {
                 mpv.command_str("playlist-move", &[count_str.as_str(), i.to_string().as_str()])?;
@@ -431,7 +431,7 @@ fn main() -> Result<(), Error> {
         Some(("metadata", metadata_matches)) => {
             let attribute = metadata_matches.get_one::<String>("attribute").unwrap();
             let property = mpv.get_property("metadata")?;
-            let metadata = property.as_object().unwrap();
+            let metadata = property.as_object().ok_or(Error::UnexpectedValue)?;
             let value = metadata.get(attribute).ok_or(Error::MpvError("metadata attribute not found".to_string()))?;
             println!("{}", value_to_string(value)?);
         }
@@ -493,7 +493,7 @@ fn main() -> Result<(), Error> {
 
             let input = format_matches.get_one::<String>("format-string").unwrap();
             let property = mpv.get_property("metadata")?;
-            let metadata = property.as_object().unwrap();
+            let metadata = property.as_object().ok_or(Error::UnexpectedValue)?;
             // Manually parse the format string instead of doing repeated search
             // and replace operations. This avoids issues with "double replacements".
             // e.g. If the format string is "%title%" and the title metadata in
