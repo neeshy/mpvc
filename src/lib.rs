@@ -72,6 +72,7 @@ impl Debug for Error {
 }
 
 impl Mpv {
+    /// Connect to the mpv socket located at the given path.
     pub fn connect(path: &str) -> Result<Mpv, Error> {
         match UnixStream::connect(path) {
             Ok(sock) => Ok(Mpv {
@@ -88,6 +89,7 @@ impl Mpv {
         self.reader.get_ref().shutdown(std::net::Shutdown::Both).expect("socket disconnect");
     }
 
+    /// Close the mpv socket.
     pub fn disconnect(self) {
         self._disconnect();
     }
@@ -138,18 +140,11 @@ impl Mpv {
         }
     }
 
-    /// # Description
-    ///
     /// Run an mpv command. The arguments are passed as a JSON array.
     ///
-    /// # Example
     /// ```
-    /// use mpvipc::{Mpv, Error};
-    /// fn main() -> Result<(), Error> {
-    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///     mpv.command_arg("add", json!(["volume", 20.0]).as_array().unwrap())?;
-    ///     Ok(())
-    /// }
+    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    /// mpv.command_arg("quit", &vec![4.into()])?;
     /// ```
     pub fn command_arg(&mut self, command: &str, args: &Vec<Value>) -> Result<(), Error> {
         let mut a = Vec::with_capacity(args.len() + 1);
@@ -159,18 +154,11 @@ impl Mpv {
         self._command(&a).map(|_| ())
     }
 
-    /// # Description
-    ///
     /// Run an mpv command. The arguments are passed as a reference to a slice of strings.
     ///
-    /// # Example
     /// ```
-    /// use mpvipc::{Mpv, Error};
-    /// fn main() -> Result<(), Error> {
-    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///     mpv.command_str("seek", &["0", "absolute"])?;
-    ///     Ok(())
-    /// }
+    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    /// mpv.command_str("seek", &["0", "absolute"])?;
     /// ```
     pub fn command_str(&mut self, command: &str, args: &[&str]) -> Result<(), Error> {
         let mut a = Vec::with_capacity(args.len() + 1);
@@ -179,91 +167,76 @@ impl Mpv {
         self._command(&a).map(|_| ())
     }
 
-    /// # Description
-    ///
     /// Run an mpv command without any arguments.
     ///
-    /// # Example
     /// ```
-    /// use mpvipc::{Mpv, Error};
-    /// fn main() -> Result<(), Error> {
-    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///     mpv.command("playlist-shuffle")?;
-    ///     Ok(())
-    /// }
+    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    /// mpv.command("playlist-shuffle")?;
     /// ```
     pub fn command(&mut self, command: &str) -> Result<(), Error> {
         self._command(&vec![command.into()]).map(|_| ())
     }
 
-    /// # Description
-    ///
     /// Retrieve a property from mpv.
     ///
-    /// # Example
     /// ```
-    /// use mpvipc::{Mpv, Error};
-    /// fn main() -> Result<(), Error> {
-    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///     let paused = mpv.get_property("pause")?.as_bool().unwrap();
-    ///     let title = mpv.get_property("media-title")?.as_str().unwrap();
-    ///     Ok(())
-    /// }
+    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    /// let paused = mpv.get_property("pause")?.as_bool().ok_or(Error::UnexpectedValue)?;
     /// ```
     pub fn get_property(&mut self, property: &str) -> Result<Value, Error> {
         self._command(&vec!["get_property".into(), property.into()])
     }
 
-    /// # Description
+    /// Set an mpv property to the given value.
     ///
-    /// Set an mpv property.
-    ///
-    /// # Example
     /// ```
-    /// use mpvipc::{Mpv, Error};
-    /// fn main() -> Result<(), Error> {
-    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///     mpv.set_property("pause", true)?;
-    ///     Ok(())
-    /// }
+    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    /// mpv.set_property("pause", true)?;
     /// ```
     pub fn set_property<T: Serialize>(&mut self, property: &str, value: T) -> Result<(), Error> {
         self._command(&vec!["set_property".into(), property.into(),
             serde_json::to_value(&value).map_err(Error::JsonError)?]).map(|_| ())
     }
 
+    /// Add the given value to an mpv property. Runs the 'add' mpv command.
+    ///
+    /// ```
+    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    /// mpv.add_property("volume", 20.0)?;
+    /// ```
     pub fn add_property(&mut self, property: &str, value: f64) -> Result<(), Error> {
         self._command(&vec!["add".into(), property.into(),
             Number::from_f64(value).ok_or(Error::UnexpectedValue)?.into()]).map(|_| ())
     }
 
+    /// Multiply an mpv property by the given value. Runs the 'multiply' mpv command.
+    ///
+    /// ```
+    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    /// mpv.multiply_property("speed", 2.0)?;
+    /// ```
     pub fn multiply_property(&mut self, property: &str, value: f64) -> Result<(), Error> {
         self._command(&vec!["multiply".into(), property.into(),
             Number::from_f64(value).ok_or(Error::UnexpectedValue)?.into()]).map(|_| ())
     }
 
+    /// Watch a property for changes. Runs the 'observe_property' mpv command.
     pub fn observe_property(&mut self, id: isize, property: &str) -> Result<(), Error> {
         self._command(&vec!["observe_property".into(), id.into(), property.into()]).map(|_| ())
     }
 
+    /// Undo the corresponding 'observe_property'. Runs the 'unobserve_property' mpv command.
     pub fn unobserve_property(&mut self, id: isize) -> Result<(), Error> {
         self._command(&vec!["unobserve_property".into(), id.into()]).map(|_| ())
     }
 
-    /// # Description
-    ///
     /// Block until an mpv event occurs and return the event.
     ///
-    /// # Example
-    ///
     /// ```
-    /// use mpvipc::{Mpv, Error};
-    /// fn main() -> Result<(), Error> {
-    ///     let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    ///     loop {
-    ///         let event = mpv.listen()?;
-    ///         println!("{:?}", event);
-    ///     }
+    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    /// loop {
+    ///     let event = mpv.listen()?;
+    ///     println!("{:?}", event);
     /// }
     /// ```
     pub fn listen(&mut self) -> Result<Map<String, Value>, Error> {
@@ -285,6 +258,14 @@ impl Mpv {
         }
     }
 
+    /// Block until an mpv event occurs and return the event as a string.
+    ///
+    /// ```
+    /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
+    /// while let Ok(response) = mpv.listen_raw() {
+    ///     println!("{}", response);
+    /// }
+    /// ```
     pub fn listen_raw(&mut self) -> Result<String, Error> {
         let mut response = String::new();
         let n = self.reader.read_line(&mut response).map_err(Error::ReadError)?;
