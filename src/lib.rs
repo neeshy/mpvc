@@ -148,9 +148,9 @@ impl Mpv {
     ///
     /// ```
     /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    /// mpv.command_arg("quit", &[4.into()])?;
+    /// mpv.command_value("quit", &[4.into()])?;
     /// ```
-    pub fn command_arg(&mut self, command: &str, args: &[Value]) -> Result<(), Error> {
+    pub fn command_value(&mut self, command: &str, args: &[Value]) -> Result<(), Error> {
         let mut a = Vec::with_capacity(args.len() + 1);
         a.push(command.into());
         a.extend(args.iter().cloned());
@@ -158,13 +158,13 @@ impl Mpv {
         self._command(a.as_ref()).map(|_| ())
     }
 
-    /// Run an mpv command. The arguments are passed as a reference to a slice of strings.
+    /// Run an mpv command. The arguments are passed as a reference to a slice.
     ///
     /// ```
     /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
-    /// mpv.command_str("seek", &["0", "absolute"])?;
+    /// mpv.command_arg("seek", &["0", "absolute"])?;
     /// ```
-    pub fn command_str(&mut self, command: &str, args: &[&str]) -> Result<(), Error> {
+    pub fn command_arg<T: Into<Value> + Copy>(&mut self, command: &str, args: &[T]) -> Result<(), Error> {
         let mut a = Vec::with_capacity(args.len() + 1);
         a.push(command.into());
         a.extend(args.iter().map(|v| (*v).into()));

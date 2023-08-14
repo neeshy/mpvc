@@ -265,15 +265,15 @@ fn main() -> Result<(), Error> {
     match matches.subcommand() {
         Some(("play", _)) => mpv.set_property("pause", false)?,
         Some(("pause", _)) => mpv.set_property("pause", true)?,
-        Some(("toggle", _)) => mpv.command_str("cycle", &["pause"])?,
+        Some(("toggle", _)) => mpv.command_arg("cycle", &["pause"])?,
         Some(("next", _)) => mpv.command("playlist-next")?,
         Some(("prev", _)) => mpv.command("playlist-prev")?,
         Some(("seek", seek_matches)) => {
-            let target = seek_matches.get_one::<String>("target").unwrap();
-            let mode = seek_matches.get_one::<String>("mode").unwrap();
-            mpv.command_str("seek", &[target, mode])?
+            let target = seek_matches.get_one::<String>("target").unwrap().as_str();
+            let mode = seek_matches.get_one::<String>("mode").unwrap().as_str();
+            mpv.command_arg("seek", &[target, mode])?
         }
-        Some(("restart", _)) => mpv.command_str("seek", &["0", "absolute"])?,
+        Some(("restart", _)) => mpv.command_arg("seek", &["0", "absolute"])?,
         Some(("kill", _)) => mpv.command("quit")?,
 
         Some(("add", add_matches)) => {
@@ -286,7 +286,7 @@ fn main() -> Result<(), Error> {
             match mode {
                 "replace" | "append" | "append-play" => {
                     for file in add_matches.get_many::<String>("file").unwrap() {
-                        mpv.command_str(command, &[file, mode])?
+                        mpv.command_arg(command, &[file.as_str(), mode])?
                     }
                 }
                 "append-next" => {
@@ -294,11 +294,11 @@ fn main() -> Result<(), Error> {
                     let files_len = files.len();
                     let count = mpv.get_property("playlist-count")?.as_u64().ok_or(Error::UnexpectedValue)? as usize;
                     for file in files {
-                        mpv.command_str(command, &[file, "append"])?;
+                        mpv.command_arg(command, &[file.as_str(), "append"])?;
                     }
                     let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize + 1;
                     for i in 0..files_len {
-                        mpv.command_arg("playlist-move", &[(count + i).into(), (pos + i).into()])?;
+                        mpv.command_arg("playlist-move", &[(count + i), (pos + i)])?;
                     }
                 }
                 _ => unreachable!(),
@@ -328,19 +328,19 @@ fn main() -> Result<(), Error> {
 
         Some(("remove", remove_matches)) => {
             let id = *remove_matches.get_one::<usize>("id").unwrap();
-            mpv.command_arg("playlist-remove", &[id.into()])?;
+            mpv.command_arg("playlist-remove", &[id])?;
         }
 
         Some(("move", move_matches)) => {
             let from = *move_matches.get_one::<usize>("from").unwrap();
             let to = *move_matches.get_one::<usize>("to").unwrap();
-            mpv.command_arg("playlist-move", &[from.into(), to.into()])?
+            mpv.command_arg("playlist-move", &[from, to])?
         }
 
         Some(("play-next", play_next_matches)) => {
-            let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)?;
+            let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize;
             let id = *play_next_matches.get_one::<usize>("id").unwrap();
-            mpv.command_arg("playlist-move", &[id.into(), (pos + 1).into()])?
+            mpv.command_arg("playlist-move", &[id, (pos + 1)])?
         }
 
         Some(("position", position_matches)) => {
@@ -353,7 +353,7 @@ fn main() -> Result<(), Error> {
         Some(("reverse", _)) => {
             let count = mpv.get_property("playlist-count")?.as_u64().ok_or(Error::UnexpectedValue)? as usize - 1;
             for i in 0..count {
-                mpv.command_arg("playlist-move", &[count.into(), i.into()])?;
+                mpv.command_arg("playlist-move", &[count, i])?;
             }
         }
 
@@ -390,7 +390,7 @@ fn main() -> Result<(), Error> {
             match mute_matches.get_one::<String>("arg").unwrap().as_str() {
                 "on" => mpv.set_property("mute", true)?,
                 "off" => mpv.set_property("mute", false)?,
-                "toggle" => mpv.command_str("cycle", &["mute"])?,
+                "toggle" => mpv.command_arg("cycle", &["mute"])?,
                 _ => unreachable!(),
             }
         }
@@ -430,7 +430,7 @@ fn main() -> Result<(), Error> {
                 }
                 None => Vec::new(),
             };
-            mpv.command_arg(command, args.as_ref())?;
+            mpv.command_value(command, args.as_ref())?;
         }
 
         Some(("metadata", metadata_matches)) => {
