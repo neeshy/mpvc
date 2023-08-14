@@ -7,7 +7,6 @@ use std::io::{BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Wr
 use std::os::unix::net::UnixStream;
 
 use log::debug;
-use serde::ser::Serialize;
 use serde_json::{json, Error as JsonError, Map, Number, Value};
 
 pub struct Mpv {
@@ -198,9 +197,8 @@ impl Mpv {
     /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
     /// mpv.set_property("pause", true)?;
     /// ```
-    pub fn set_property<T: Serialize>(&mut self, property: &str, value: T) -> Result<(), Error> {
-        self._command(&vec!["set_property".into(), property.into(),
-            serde_json::to_value(&value).map_err(Error::JsonError)?]).map(|_| ())
+    pub fn set_property<T: Into<Value>>(&mut self, property: &str, value: T) -> Result<(), Error> {
+        self._command(&vec!["set_property".into(), property.into(), value.into()]).map(|_| ())
     }
 
     /// Add the given value to an mpv property. Runs the 'add' mpv command.
