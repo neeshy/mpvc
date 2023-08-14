@@ -424,7 +424,7 @@ fn main() -> Result<(), Error> {
                 Some(args) => {
                     let json = *run_matches.get_one::<bool>("json").unwrap();
                     if json {
-                        args.map(|v| serde_json::from_str(v).map_err(Error::JsonError)).collect::<Result<Vec<Value>, Error>>()?
+                        args.map(|v| serde_json::from_str::<Value>(v)).collect::<Result<_, _>>().map_err(Error::JsonError)?
                     } else {
                         args.map(|v| v.as_str().into()).collect()
                     }
@@ -556,11 +556,11 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("observe", observe_matches)) => {
-            let watched_properties = match observe_matches.get_many::<String>("property") {
-                Some(property_values) => property_values.collect::<Vec<&String>>(),
+            let properties = match observe_matches.get_many::<String>("property") {
+                Some(properties) => properties.collect(),
                 None => Vec::new(),
             };
-            for (i, property) in watched_properties.iter().enumerate() {
+            for (i, property) in properties.iter().enumerate() {
                 mpv.observe_property(i as isize + 1, property)?;
             }
             while let Ok(response) = mpv.listen_raw() {
@@ -569,33 +569,33 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("wait", wait_matches)) => {
-            let watched_events = match wait_matches.get_many::<String>("event") {
-                Some(event_values) => event_values.collect::<Vec<&String>>(),
+            let events = match wait_matches.get_many::<String>("event") {
+                Some(events) => events.collect(),
                 None => Vec::new(),
             };
-            let watched_properties = match wait_matches.get_many::<String>("property") {
-                Some(property_values) => property_values.collect::<Vec<&String>>(),
+            let properties = match wait_matches.get_many::<String>("property") {
+                Some(properties) => properties.collect(),
                 None => Vec::new(),
             };
-            for (i, property) in watched_properties.iter().enumerate() {
+            for (i, property) in properties.iter().enumerate() {
                 mpv.observe_property(i as isize + 1, property)?;
             }
             // Needed since the observe_property command itself emits a property-change event
-            let mut watched_properties_first = Vec::<&String>::new();
+            let mut seen = Vec::new();
             loop {
                 let event = mpv.listen()?;
                 if let Some(Value::String(ref e)) = event.get("event") {
                     if e == "property-change" {
                         if let Some(Value::String(ref property)) = event.get("name") {
-                            if let Some(i) = watched_properties.iter().position(|v| v == &property) {
-                                if watched_properties_first.contains(&property) {
+                            if let Some(i) = properties.iter().position(|v| v == &property) {
+                                if seen.contains(&property) {
                                     break;
                                 } else {
-                                    watched_properties_first.push(watched_properties[i]);
+                                    seen.push(properties[i]);
                                 }
                             }
                         }
-                    } else if watched_events.contains(&e) {
+                    } else if events.contains(&e) {
                         break;
                     }
                 }
