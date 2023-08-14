@@ -398,8 +398,8 @@ fn main() -> Result<(), Error> {
         Some(("set", set_matches)) => {
             let property = set_matches.get_one::<String>("property").unwrap();
             let value = set_matches.get_one::<String>("value").unwrap();
-            let json = set_matches.get_one::<bool>("json").unwrap();
-            let value = if *json {
+            let json = *set_matches.get_one::<bool>("json").unwrap();
+            let value = if json {
                 serde_json::from_str::<Value>(value).map_err(Error::JsonError)?
             } else {
                 value.as_str().into()
@@ -409,9 +409,9 @@ fn main() -> Result<(), Error> {
 
         Some(("get", get_matches)) => {
             let property = get_matches.get_one::<String>("property").unwrap();
-            let json = get_matches.get_one::<bool>("json").unwrap();
+            let json = *get_matches.get_one::<bool>("json").unwrap();
             let value = mpv.get_property(property)?;
-            if *json {
+            if json {
                 println!("{}", value)
             } else {
                 println!("{}", value_to_string(&value)?);
