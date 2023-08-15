@@ -25,18 +25,6 @@ impl Drop for Mpv {
     }
 }
 
-impl Clone for Mpv {
-    fn clone(&self) -> Self {
-        let sock = self.reader.get_ref().try_clone().expect("cloning UnixStream");
-        Mpv {
-            path: self.path.clone(),
-            reader: BufReader::new(sock),
-            responses: self.responses.clone(),
-            counter: self.counter,
-        }
-    }
-}
-
 pub enum Error {
     MpvError(String),
     ConnectError(IoError),
