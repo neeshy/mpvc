@@ -170,15 +170,15 @@ fn main() -> Result<(), Error> {
                 .required(true)))
         .subcommand(Command::new("run")
             .about("Run an mpv command")
-            .arg(Arg::new("json")
-                .help("Parse each value of <args> as JSON")
-                .short('j')
-                .long("json")
-                .action(ArgAction::SetTrue))
             .arg(Arg::new("command")
                 .required(true))
             .arg(Arg::new("args")
-                .num_args(0..)))
+                .help("String arguments")
+                .num_args(0..))
+            .arg(Arg::new("json")
+                .help("JSON arguments")
+                .num_args(1..)
+                .last(true)))
         .subcommand(Command::new("metadata")
             .about("Retrieve a metadata attribute from the currently playing file (see property 'metadata' for possible values)")
             .arg(Arg::new("attribute")
@@ -414,18 +414,15 @@ fn main() -> Result<(), Error> {
 
         Some(("run", run_matches)) => {
             let command = run_matches.get_one::<String>("command").unwrap();
-            let args = match run_matches.get_many::<String>("args") {
-                Some(args) => {
-                    let json = *run_matches.get_one::<bool>("json").unwrap();
-                    if json {
-                        args.map(|v| serde_json::from_str::<Value>(v)).collect::<Result<_, _>>().map_err(Error::JsonError)?
-                    } else {
-                        args.map(|v| v.as_str().into()).collect()
-                    }
-                }
+            let args = run_matches.get_many::<String>("args").unwrap_or_default()
+                .map(|v| v.as_str().into());
+            let json = match run_matches.get_many::<String>("json") {
+                Some(json) => json
+                    .map(|v| serde_json::from_str::<Value>(v))
+                    .collect::<Result<Vec<_>, _>>().map_err(Error::JsonError)?,
                 None => Vec::new(),
             };
-            mpv.command_arg(command, args)?;
+            mpv.command_arg(command, args.chain(json))?;
         }
 
         Some(("metadata", metadata_matches)) => {
