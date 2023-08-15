@@ -1,6 +1,3 @@
-extern crate log;
-extern crate serde_json;
-
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::io::{BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Write};
 use std::iter::once;

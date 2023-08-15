@@ -1,8 +1,3 @@
-extern crate mpvc;
-
-extern crate notify;
-extern crate serde_json;
-
 use std::fs;
 use std::os::unix::fs::FileTypeExt;
 use std::path::PathBuf;

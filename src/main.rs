@@ -1,9 +1,3 @@
-extern crate mpvc;
-
-extern crate clap;
-extern crate colored;
-extern crate serde_json;
-
 use std::process::Command as Cmd;
 use std::thread;
 use std::time::Duration;
