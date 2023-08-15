@@ -58,7 +58,7 @@ fn main() {
         }
     };
 
-    for (i, property) in vec!["idle-active", "pause", "playlist-pos-1", "playlist-count", "media-title"].iter().enumerate() {
+    for (i, property) in ["idle-active", "pause", "playlist-pos-1", "playlist-count", "media-title"].into_iter().enumerate() {
         if let Err(_) = mpv.observe_property(i as isize + 1, property) {
             return;
         }

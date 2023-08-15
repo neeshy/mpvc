@@ -560,7 +560,7 @@ fn main() -> Result<(), Error> {
                 Some(properties) => properties.collect(),
                 None => Vec::new(),
             };
-            for (i, property) in properties.iter().enumerate() {
+            for (i, property) in properties.into_iter().enumerate() {
                 mpv.observe_property(i as isize + 1, property)?;
             }
             while let Ok(response) = mpv.listen_raw() {
