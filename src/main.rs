@@ -298,7 +298,7 @@ fn main() -> Result<(), Error> {
                     }
                     let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize + 1;
                     for i in 0..files_len {
-                        mpv.command_arg("playlist-move", &[(count + i), (pos + i)])?;
+                        mpv.command_arg("playlist-move", &[count + i, pos + i])?;
                     }
                 }
                 _ => unreachable!(),
@@ -340,7 +340,7 @@ fn main() -> Result<(), Error> {
         Some(("play-next", play_next_matches)) => {
             let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize;
             let id = *play_next_matches.get_one::<usize>("id").unwrap();
-            mpv.command_arg("playlist-move", &[id, (pos + 1)])?
+            mpv.command_arg("playlist-move", &[id, pos + 1])?
         }
 
         Some(("position", position_matches)) => {
