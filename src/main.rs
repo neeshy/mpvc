@@ -445,8 +445,8 @@ fn main() -> Result<(), Error> {
                 match key {
                     "n" => Some("\n".to_string()),
                     "title" => {
-                        if metadata.contains_key("title") {
-                            Some(metadata["title"].as_str()?.to_string())
+                        if let Some(title) = metadata.get("title") {
+                            Some(title.as_str()?.to_string())
                         } else {
                             Some(mpv.get_property("media-title").ok()?.as_str()?.to_string())
                         }
