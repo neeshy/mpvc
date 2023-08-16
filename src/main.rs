@@ -416,11 +416,11 @@ fn main() -> Result<(), Error> {
             let command = run_matches.get_one::<String>("command").unwrap();
             let args = run_matches.get_many::<String>("args").unwrap_or_default()
                 .map(|v| v.as_str().into());
-            let json = match run_matches.get_many::<String>("json") {
-                Some(json) => json
-                    .map(|v| serde_json::from_str::<Value>(v))
-                    .collect::<Result<Vec<_>, _>>().map_err(Error::JsonError)?,
-                None => Vec::new(),
+            let json = if let Some(json) = run_matches.get_many::<String>("json") {
+                json.map(|v| serde_json::from_str::<Value>(v))
+                    .collect::<Result<Vec<_>, _>>().map_err(Error::JsonError)?
+            } else {
+                Vec::new()
             };
             mpv.command_arg(command, args.chain(json))?;
         }
@@ -502,45 +502,36 @@ fn main() -> Result<(), Error> {
             let mut i = 0usize;
             loop {
                 let sub = &input[i..];
-                match sub.find('%') {
-                    Some(start) => {
-                        let sub_fmt = &sub[start + 1..];
-                        match sub_fmt.find('%') {
-                            Some(end) => {
-                                output += &sub[..start];
-                                let fmt = &sub_fmt[..end];
-                                match eval_format(&mut mpv, metadata, fmt) {
-                                    Some(m) => {
-                                        output += &m;
-                                        // If the format string is valid, the
-                                        // starting index should be iterated past
-                                        // the ending '%'. Add two to account for
-                                        // each delimiter.
-                                        i += start + end + 2;
-                                    }
-                                    None => {
-                                        // If this was not a valid format string, set the index to
-                                        // the ending '%'. This is needed in case of unbalanced %'s
-                                        // i.e. the string "100% Orange Juice: %percentage%" will
-                                        // produce the following iterations:
-                                        //   1: sub[..start] == "100", fmt == " Orange Juice: "
-                                        //   2: sub[..start] == "",    fmt == "percentage"
-                                        output += "%";
-                                        output += fmt;
-                                        i += start + end + 1;
-                                    }
-                                }
-                            }
-                            None => {
-                                output += sub;
-                                break;
-                            }
+                if let Some(start) = sub.find('%') {
+                    let sub_fmt = &sub[start + 1..];
+                    if let Some(end) = sub_fmt.find('%') {
+                        output += &sub[..start];
+                        let fmt = &sub_fmt[..end];
+                        if let Some(m) = eval_format(&mut mpv, metadata, fmt) {
+                            output += &m;
+                            // If the format string is valid, the
+                            // starting index should be iterated past
+                            // the ending '%'. Add two to account for
+                            // each delimiter.
+                            i += start + end + 2;
+                        } else {
+                            // If this was not a valid format string, set the index to
+                            // the ending '%'. This is needed in case of unbalanced %'s
+                            // i.e. the string "100% Orange Juice: %percentage%" will
+                            // produce the following iterations:
+                            //   1: sub[..start] == "100", fmt == " Orange Juice: "
+                            //   2: sub[..start] == "",    fmt == "percentage"
+                            output += "%";
+                            output += fmt;
+                            i += start + end + 1;
                         }
-                    }
-                    None => {
+                    } else {
                         output += sub;
                         break;
                     }
+                } else {
+                    output += sub;
+                    break;
                 }
             }
             print!("{}", output);
