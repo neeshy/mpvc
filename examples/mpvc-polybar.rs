@@ -1,9 +1,9 @@
 use std::fs;
 use std::os::unix::fs::FileTypeExt;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync;
 
-use notify::{event, RecursiveMode, Watcher};
+use notify::{event::{CreateKind, Event, EventKind}, RecursiveMode, Watcher};
 use serde_json::Value;
 
 use mpvc::Mpv;
@@ -11,11 +11,11 @@ use mpvc::Mpv;
 fn watch() -> Result<(), notify::Error> {
     let (tx, rx) = sync::mpsc::channel();
     let mut watcher = notify::recommended_watcher(tx)?;
-    watcher.watch("/tmp".as_ref(), RecursiveMode::NonRecursive)?;
+    watcher.watch(Path::new("/tmp"), RecursiveMode::NonRecursive)?;
+    let path = PathBuf::from("/tmp/mpv.sock");
     for event in rx {
-        if let Ok(e) = event {
-            if e.kind == event::EventKind::Create(event::CreateKind::File) &&
-                    e.paths.contains(&PathBuf::from("/tmp/mpv.sock")) {
+        if let Ok(Event { kind: EventKind::Create(CreateKind::File), paths, attrs: _ }) = event {
+            if paths.contains(&path) {
                 break;
             }
         }
@@ -32,24 +32,20 @@ fn print(idle: bool, pause: &Option<String>, position: &Option<u64>, count: &Opt
 
 fn main() {
     let mut mpv = loop {
-        match fs::metadata("/tmp/mpv.sock") {
-            Ok(metadata) => {
-                if metadata.file_type().is_socket() {
-                    match Mpv::connect("/tmp/mpv.sock") {
-                        Ok(instance) => break instance,
-                        Err(_) => {
-                            let _ = fs::remove_file("/tmp/mpv.sock");
-                        }
-                    }
+        if let Ok(metadata) = fs::metadata("/tmp/mpv.sock") {
+            if metadata.file_type().is_socket() {
+                if let Ok(instance) = Mpv::connect("/tmp/mpv.sock") {
+                    break instance;
                 } else {
-                    println!("N/A");
-                    let _ = watch();
+                    let _ = fs::remove_file("/tmp/mpv.sock");
                 }
-            }
-            Err(_) => {
+            } else {
                 println!("N/A");
                 let _ = watch();
             }
+        } else {
+            println!("N/A");
+            let _ = watch();
         }
     };
 
