@@ -468,8 +468,8 @@ fn main() -> Result<(), Error> {
                         Some((percent as u64).to_string())
                     }
                     "position" => {
-                        let position = mpv.get_property("playlist-pos").ok()?.as_u64()?;
-                        Some((position + 1).to_string())
+                        let position = mpv.get_property("playlist-pos-1").ok()?.as_u64()?;
+                        Some(position.to_string())
                     }
                     _ => {
                         if let Some(i) = key.find('?') {
