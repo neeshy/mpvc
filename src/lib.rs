@@ -2,12 +2,12 @@ use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::io::{BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Write};
 use std::iter::once;
 use std::os::unix::net::UnixStream;
+use std::path::Path;
 
 use log::debug;
 use serde_json::{Error as JsonError, Map, Number, Value};
 
 pub struct Mpv {
-    path: String,
     reader: BufReader<UnixStream>,
     responses: Vec<Map<String, Value>>,
     counter: i64,
@@ -15,7 +15,13 @@ pub struct Mpv {
 
 impl Debug for Mpv {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> FmtResult {
-        fmt.debug_tuple("Mpv").field(&self.path).finish()
+        let mut builder = fmt.debug_struct("Mpv");
+        if let Ok(addr) = self.reader.get_ref().peer_addr() {
+            if let Some(pathname) = addr.as_pathname() {
+                builder.field("path", &pathname);
+            }
+        }
+        builder.finish()
     }
 }
 
@@ -57,11 +63,10 @@ impl Debug for Error {
 
 impl Mpv {
     /// Connect to the mpv socket located at the given path.
-    pub fn connect(path: &str) -> Result<Mpv, Error> {
+    pub fn connect<P: AsRef<Path>>(path: P) -> Result<Mpv, Error> {
         match UnixStream::connect(path) {
             Ok(sock) => Ok(Mpv {
                 reader: BufReader::new(sock),
-                path: path.to_string(),
                 responses: Vec::new(),
                 counter: -1,
             }),
