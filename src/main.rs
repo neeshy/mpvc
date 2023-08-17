@@ -304,11 +304,13 @@ fn main() -> Result<(), Error> {
             let playlist = property.as_array().ok_or(Error::UnexpectedValue)?;
             for (i, e) in playlist.iter().enumerate() {
                 let entry = e.as_object().ok_or(Error::UnexpectedValue)?;
-                let title = if entry.contains_key("title") {
-                    entry["title"].as_str().ok_or(Error::UnexpectedValue)?
+                let title = if let Some(title) = entry.get("title") {
+                    title
+                } else if let Some(filename) = entry.get("filename") {
+                    filename
                 } else {
-                    entry["filename"].as_str().ok_or(Error::UnexpectedValue)?
-                };
+                    return Err(Error::MissingValue)
+                }.as_str().ok_or(Error::UnexpectedValue)?;
                 let mut output = format!("{}\t{}", i + 1, title);
                 if entry.contains_key("current") {
                     output = output.reversed().to_string();
