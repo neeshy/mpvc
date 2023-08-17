@@ -489,8 +489,8 @@ fn main() -> Result<(), Error> {
             }
 
             let input = format_matches.get_one::<String>("format-string").unwrap();
-            let property = mpv.get_property("metadata")?;
-            let metadata = property.as_object().ok_or(Error::UnexpectedValue)?;
+            let metadata = mpv.get_property("metadata")?.as_object().ok_or(Error::UnexpectedValue)?
+                .iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect();
             // Manually parse the format string instead of doing repeated search
             // and replace operations. This avoids issues with "double replacements".
             // e.g. If the format string is "%title%" and the title metadata in
@@ -507,7 +507,7 @@ fn main() -> Result<(), Error> {
                     if let Some(end) = sub_fmt.find('%') {
                         output += &sub[..start];
                         let fmt = &sub_fmt[..end];
-                        if let Some(m) = eval_format(&mut mpv, metadata, fmt) {
+                        if let Some(m) = eval_format(&mut mpv, &metadata, fmt) {
                             output += &m;
                             // If the format string is valid, the
                             // starting index should be iterated past
