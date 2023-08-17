@@ -238,7 +238,7 @@ fn main() -> Result<(), Error> {
     let socket = matches.get_one::<String>("socket").unwrap();
     let mut mpv = match Mpv::connect(socket) {
         Ok(instance) => instance,
-        Err(msg) => match matches.subcommand() {
+        Err(e) => match matches.subcommand() {
             Some(("add", _)) => {
                 Cmd::new("mpv")
                     .args([
@@ -252,7 +252,7 @@ fn main() -> Result<(), Error> {
                 thread::sleep(Duration::from_millis(500));
                 Mpv::connect(socket)?
             }
-            _ => return Err(msg),
+            _ => return Err(e),
         },
     };
 
