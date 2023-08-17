@@ -146,7 +146,8 @@ impl Mpv {
     /// let mut mpv = Mpv::connect("/tmp/mpvsocket")?;
     /// mpv.command_arg("seek", ["0", "absolute"])?;
     /// ```
-    pub fn command_arg<I: IntoIterator<Item = V>, V: Into<Value>>(&mut self, command: &str, args: I) -> Result<(), Error> {
+    pub fn command_arg<I: IntoIterator>(&mut self, command: &str, args: I) -> Result<(), Error>
+    where I::Item: Into<Value> {
         // XXX: Drop return value for now, change interface later if needed
         self._command(once(command.into()).chain(args.into_iter().map(|v| v.into()))).map(|_| ())
     }
