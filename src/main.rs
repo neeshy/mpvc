@@ -455,10 +455,6 @@ fn main() -> Result<(), Error> {
                             Some(mpv.get_property("media-title").ok()?.as_str()?.to_string())
                         }
                     }
-                    "artist" | "album" | "album_artist" | "date" | "year" | "track" | "genre" |
-                    "composer" | "comment" | "disc" => {
-                        Some(value_to_string(metadata.get(key)?).ok()?)
-                    }
                     "time" => {
                         let time = mpv.get_property("playback-time").ok()?.as_f64()?;
                         Some(format_duration(time as u64))
@@ -485,6 +481,8 @@ fn main() -> Result<(), Error> {
                             } else {
                                 Some(pair[j + 1..].to_string())
                             }
+                        } else if let Some(m) = metadata.get(key) {
+                            Some(value_to_string(m).ok()?)
                         } else {
                             value_to_string(&mpv.get_property(key).ok()?).ok()
                         }
