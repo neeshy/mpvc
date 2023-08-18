@@ -205,7 +205,8 @@ fn main() -> Result<(), Error> {
                     %percentage%\n\
                     %position%\n\
                     %playlist-count%\n\
-                    %n% (newline)\n\n\
+                    %n% (newline)\n\
+                    %% (escaped percent)\n\n\
                     Additionally, any valid property may be used.\n\n\
                     The format string may also appear in the form:\n\
                     \t%property?consequent:alternative%\n\
@@ -445,6 +446,7 @@ fn main() -> Result<(), Error> {
                 }
 
                 match key {
+                    "" => Some("%".to_string()),
                     "n" => Some("\n".to_string()),
                     "title" => {
                         if let Some(title) = metadata.get("title") {
@@ -506,32 +508,21 @@ fn main() -> Result<(), Error> {
                 let sub = &input[i..];
                 if let Some(start) = sub.find('%') {
                     let sub_fmt = &sub[start + 1..];
+                    output += &sub[..start];
                     if let Some(end) = sub_fmt.find('%') {
-                        output += &sub[..start];
                         let fmt = &sub_fmt[..end];
-                        if let Some(m) = eval_format(&mut mpv, &metadata, fmt) {
-                            output += &m;
-                            // If the format string is valid, the
-                            // starting index should be iterated past
-                            // the ending '%'. Add two to account for
-                            // each delimiter.
-                            i += start + end + 2;
-                        } else {
-                            // If this was not a valid format string, set the index to
-                            // the ending '%'. This is needed in case of unbalanced %'s
-                            // i.e. the string "100% Orange Juice: %percentage%" will
-                            // produce the following iterations:
-                            //   1: sub[..start] == "100", fmt == " Orange Juice: "
-                            //   2: sub[..start] == "",    fmt == "percentage"
-                            output += "%";
-                            output += fmt;
-                            i += start + end + 1;
+                        if let Some(s) = eval_format(&mut mpv, &metadata, fmt) {
+                            output += s.as_str();
                         }
+                        // Increment the starting index past the ending '%'.
+                        // Add two to account for each delimiter.
+                        i += start + end + 2;
                     } else {
-                        output += sub;
+                        // Unterminated format string
                         break;
                     }
                 } else {
+                    // No further format strings
                     output += sub;
                     break;
                 }
