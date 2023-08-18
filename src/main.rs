@@ -397,7 +397,7 @@ fn main() -> Result<(), Error> {
             let value = set_matches.get_one::<String>("value").unwrap();
             let json = *set_matches.get_one::<bool>("json").unwrap();
             let value = if json {
-                serde_json::from_str::<Value>(value).map_err(Error::JsonError)?
+                value.parse::<Value>().map_err(Error::JsonError)?
             } else {
                 value.as_str().into()
             };
@@ -420,7 +420,7 @@ fn main() -> Result<(), Error> {
             let args = run_matches.get_many::<String>("args").unwrap_or_default()
                 .map(|v| v.as_str().into());
             let json = if let Some(json) = run_matches.get_many::<String>("json") {
-                json.map(|v| serde_json::from_str::<Value>(v))
+                json.map(|v| v.parse::<Value>())
                     .collect::<Result<Vec<_>, _>>().map_err(Error::JsonError)?
             } else {
                 Vec::new()
