@@ -498,8 +498,6 @@ fn main() -> Result<(), Error> {
             // e.g. If the format string is "%title%" and the title metadata in
             // turn contains a valid format string (say "%path%", unlikely but possible),
             // the resulting output will be incorrect.
-            // Despite processing the string in one pass, this is actually slower
-            // than the alternative of repeatedly calling String::replace().
             let mut output = String::with_capacity(input.len());
             let mut i = 0usize;
             loop {
