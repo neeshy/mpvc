@@ -184,9 +184,9 @@ fn main() -> Result<(), Error> {
             .arg(Arg::new("attribute")
                 .required(true)))
         .subcommand(Command::new("format")
-            .about("Replace the given arguments in the format string with their real-time values from mpv")
+            .about("Replace the given specifiers in the format string with their real-time values from mpv")
             .arg(Arg::new("format-string")
-                .help("Possible format string arguments are:\n\
+                .help("Possible format specifiers are:\n\
                     %filename%\n\
                     %path%\n\
                     %title%\n\
@@ -208,7 +208,7 @@ fn main() -> Result<(), Error> {
                     %n% (newline)\n\
                     %% (escaped percent)\n\n\
                     Additionally, any valid property may be used.\n\n\
-                    The format string may also appear in the form:\n\
+                    The format specifier may also appear in the form:\n\
                     \t%property?consequent:alternative%\n\
                     where the property evaluates to a boolean.")
                 .required(true)))
@@ -437,7 +437,7 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("format", format_matches)) => {
-            fn eval_format(mpv: &mut Mpv, metadata: &Map<String, Value>, key: &str) -> Option<String> {
+            fn eval_format(mpv: &mut Mpv, metadata: &Map<String, Value>, spec: &str) -> Option<String> {
                 fn format_duration(d: u64) -> String {
                     match (d % 60, (d / 60) % 60, d / 3600) {
                         (s, m, 0) => format!("{:02}:{:02}", m, s),
@@ -445,7 +445,7 @@ fn main() -> Result<(), Error> {
                     }
                 }
 
-                match key {
+                match spec {
                     "" => Some("%".to_string()),
                     "n" => Some("\n".to_string()),
                     "title" => {
@@ -472,19 +472,19 @@ fn main() -> Result<(), Error> {
                         Some(position.to_string())
                     }
                     _ => {
-                        if let Some(i) = key.find('?') {
-                            let property = &key[..i];
-                            let pair = &key[i + 1..];
+                        if let Some(i) = spec.find('?') {
+                            let property = &spec[..i];
+                            let pair = &spec[i + 1..];
                             let j = pair.find(':')?;
                             if mpv.get_property(property).ok()?.as_bool()? {
                                 Some(pair[..j].to_string())
                             } else {
                                 Some(pair[j + 1..].to_string())
                             }
-                        } else if let Some(m) = metadata.get(key) {
+                        } else if let Some(m) = metadata.get(spec) {
                             Some(value_to_string(m).ok()?)
                         } else {
-                            value_to_string(&mpv.get_property(key).ok()?).ok()
+                            value_to_string(&mpv.get_property(spec).ok()?).ok()
                         }
                     }
                 }
@@ -495,30 +495,30 @@ fn main() -> Result<(), Error> {
                 .iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect();
             // Manually parse the format string instead of doing repeated search
             // and replace operations. This avoids issues with "double replacements".
-            // e.g. If the format string is "%title%" and the title metadata in
-            // turn contains a valid format string (say "%path%", unlikely but possible),
+            // e.g. If the format string is "%title%" and the title metadata in turn
+            // contains a valid format specifier (say "%path%", unlikely but possible),
             // the resulting output will be incorrect.
             let mut output = String::with_capacity(input.len());
             let mut i = 0usize;
             loop {
                 let sub = &input[i..];
                 if let Some(start) = sub.find('%') {
-                    let sub_fmt = &sub[start + 1..];
                     output += &sub[..start];
-                    if let Some(end) = sub_fmt.find('%') {
-                        let fmt = &sub_fmt[..end];
-                        if let Some(s) = eval_format(&mut mpv, &metadata, fmt) {
+                    let mut spec = &sub[start + 1..];
+                    if let Some(end) = spec.find('%') {
+                        spec = &spec[..end];
+                        if let Some(s) = eval_format(&mut mpv, &metadata, spec) {
                             output += s.as_str();
                         }
                         // Increment the starting index past the ending '%'.
                         // Add two to account for each delimiter.
                         i += start + end + 2;
                     } else {
-                        // Unterminated format string
+                        // Unterminated format specifier
                         break;
                     }
                 } else {
-                    // No further format strings
+                    // No further format specifiers
                     output += sub;
                     break;
                 }
