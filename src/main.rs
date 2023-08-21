@@ -206,8 +206,8 @@ fn main() -> Result<(), Error> {
                     %position%\n\
                     %playlist-count%\n\
                     %n% (newline)\n\
-                    %% (escaped percent)\n\n\
-                    %[% (escaped left bracket)\n\n\
+                    %% (escaped percent)\n\
+                    %[% (escaped left bracket)\n\
                     %]% (escaped right bracket)\n\n\
                     Additionally, any valid property may be used.\n\n\
                     The format specifier may also appear in the form:\n\
@@ -215,7 +215,7 @@ fn main() -> Result<(), Error> {
                     where the property evaluates to a boolean.\n\n\
                     Brackets may be used to group output such that if any\n\
                     format specifiers contained within fail to be retrieved,\n\
-                    then none of the characters between the brackets are outputed.")
+                    then none of the characters between the brackets are outputted.")
                 .required(true)))
         .subcommand(Command::new("observe")
             .about("Print all mpv events in real-time. Additionally, observe a set of properties and inform about changes")
