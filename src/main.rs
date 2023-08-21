@@ -434,11 +434,9 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("metadata", metadata_matches)) => {
-            let attribute = metadata_matches.get_one::<String>("attribute").unwrap();
-            let property = mpv.get_property("metadata")?;
-            let metadata = property.as_object().ok_or(Error::UnexpectedValue)?;
-            let value = metadata.get(attribute).ok_or(Error::MpvError("metadata attribute not found".to_string()))?;
-            println!("{}", value_to_string(value)?);
+            let attribute = metadata_matches.get_one::<String>("attribute").unwrap().as_str();
+            let metadata = mpv.get_property(("metadata/by-key/".to_string() + attribute).as_str())?;
+            println!("{}", value_to_string(&metadata)?);
         }
 
         Some(("format", format_matches)) => {
