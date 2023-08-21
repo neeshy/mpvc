@@ -496,11 +496,10 @@ fn main() -> Result<(), Error> {
                 }
             }
 
-            let input = format_matches.get_one::<String>("format-string").unwrap();
+            let mut input = format_matches.get_one::<String>("format-string").unwrap().as_str();
+            let mut output = String::with_capacity(input.len());
             let metadata = mpv.get_property("metadata")?.as_object().ok_or(Error::UnexpectedValue)?
                 .iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect();
-
-            let mut output = String::with_capacity(input.len());
 
             enum State {
                 Raw,
@@ -511,22 +510,22 @@ fn main() -> Result<(), Error> {
 
             let mut state = Raw;
             let mut stack = Vec::<String>::new();
-            let mut sub = input.as_str();
+
             loop {
                 match state {
                     Raw => {
-                        let b = if let Some(i) = sub.find(['%', '[', ']']) {
+                        let b = if let Some(i) = input.find(['%', '[', ']']) {
                             if stack.is_empty() {
-                                output += &sub[..i];
+                                output += &input[..i];
                             } else {
-                                *stack.last_mut().unwrap() += &sub[..i];
+                                *stack.last_mut().unwrap() += &input[..i];
                             }
-                            let b = sub.as_bytes()[i];
-                            sub = &sub[i + 1..];
+                            let b = input.as_bytes()[i];
+                            input = &input[i + 1..];
                             b
                         } else {
                             // No further format specifiers or groups
-                            output += sub;
+                            output += input;
                             break
                         };
                         match b {
@@ -545,9 +544,9 @@ fn main() -> Result<(), Error> {
                         }
                     }
                     Spec => {
-                        let spec = if let Some(i) = sub.find('%') {
-                            let spec = &sub[..i];
-                            sub = &sub[i + 1..];
+                        let spec = if let Some(i) = input.find('%') {
+                            let spec = &input[..i];
+                            input = &input[i + 1..];
                             spec
                         } else {
                             // Unterminated format specifier
@@ -568,9 +567,9 @@ fn main() -> Result<(), Error> {
                         }
                     }
                     Skip(ref mut nesting, ref mut spec) => {
-                        let b = if let Some(i) = sub.find(['%', '[', ']']) {
-                            let b = sub.as_bytes()[i];
-                            sub = &sub[i + 1..];
+                        let b = if let Some(i) = input.find(['%', '[', ']']) {
+                            let b = input.as_bytes()[i];
+                            input = &input[i + 1..];
                             b
                         } else {
                             // Unterminated group or format specifier
