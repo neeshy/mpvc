@@ -499,11 +499,7 @@ fn main() -> Result<(), Error> {
             let input = format_matches.get_one::<String>("format-string").unwrap();
             let metadata = mpv.get_property("metadata")?.as_object().ok_or(Error::UnexpectedValue)?
                 .iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect();
-            // Manually parse the format string instead of doing repeated search
-            // and replace operations. This avoids issues with "double replacements".
-            // e.g. If the format string is "%title%" and the title metadata in turn
-            // contains a valid format specifier (say "%path%", unlikely but possible),
-            // the resulting output will be incorrect.
+
             let mut output = String::with_capacity(input.len());
 
             enum State {
