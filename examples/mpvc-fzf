@@ -11,4 +11,4 @@ FZF_DEFAULT_COMMAND="mpvc playlist" fzf \
   --bind='ctrl-d:execute-silent(mpvc seek -20 &)' \
   --header='mpvc-fzf help: C-o:play C-r:reload C-t:remove C-s:seek C-d:rewind C-p:toggle' \
   --preview-window=up:2 \
-  --preview='mpvc format "%artist% - %title%%n%%pause?⏸:⏵% #%position%/%playlist-count% %time%/%duration% (%percentage%%%)%n%"'
+  --preview='mpvc format "[%artist% - ]%title%%n%%pause?⏸:⏵% #%position%/%playlist-count% %time%/%duration% (%percentage%%%)%n%"'
