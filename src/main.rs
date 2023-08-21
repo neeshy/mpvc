@@ -561,7 +561,7 @@ fn main() -> Result<(), Error> {
                             state = Raw;
                         } else {
                             stack.pop();
-                            state = Skip(stack.len(), false);
+                            state = Skip(0, false);
                         }
                     }
                     Skip(ref mut nesting, ref mut spec) => {
@@ -582,7 +582,7 @@ fn main() -> Result<(), Error> {
                             }
                             b']' => {
                                 if !*spec {
-                                    if *nesting <= stack.len() {
+                                    if *nesting == 0 {
                                         state = Raw;
                                     } else {
                                         *nesting -= 1;
