@@ -565,7 +565,12 @@ fn main() -> Result<(), Error> {
                         }
                     }
                     Skip(ref mut nesting, ref mut spec) => {
-                        let b = if let Some(i) = input.find(['%', '[', ']']) {
+                        let i = if *spec {
+                            input.find('%')
+                        } else {
+                            input.find(['%', '[', ']'])
+                        };
+                        let b = if let Some(i) = i {
                             let b = input.as_bytes()[i];
                             input = &input[i + 1..];
                             b
@@ -575,18 +580,12 @@ fn main() -> Result<(), Error> {
                         };
                         match b {
                             b'%' => *spec = !*spec,
-                            b'[' => {
-                                if !*spec {
-                                    *nesting += 1;
-                                }
-                            }
+                            b'[' => *nesting += 1,
                             b']' => {
-                                if !*spec {
-                                    if *nesting == 0 {
-                                        state = Raw;
-                                    } else {
-                                        *nesting -= 1;
-                                    }
+                                if *nesting == 0 {
+                                    state = Raw;
+                                } else {
+                                    *nesting -= 1;
                                 }
                             }
                             _ => unreachable!(),
