@@ -207,10 +207,15 @@ fn main() -> Result<(), Error> {
                     %playlist-count%\n\
                     %n% (newline)\n\
                     %% (escaped percent)\n\n\
+                    %[% (escaped left bracket)\n\n\
+                    %]% (escaped right bracket)\n\n\
                     Additionally, any valid property may be used.\n\n\
                     The format specifier may also appear in the form:\n\
                     \t%property?consequent:alternative%\n\
-                    where the property evaluates to a boolean.")
+                    where the property evaluates to a boolean.\n\n\
+                    Brackets may be used to group output such that if any\n\
+                    format specifiers contained within fail to be retrieved,\n\
+                    then none of the characters between the brackets are outputed.")
                 .required(true)))
         .subcommand(Command::new("observe")
             .about("Print all mpv events in real-time. Additionally, observe a set of properties and inform about changes")
@@ -448,6 +453,7 @@ fn main() -> Result<(), Error> {
                 match spec {
                     "" => Some("%".to_string()),
                     "n" => Some("\n".to_string()),
+                    "[" | "]" => Some(spec.to_string()),
                     "title" => {
                         if let Some(title) = metadata.get("title") {
                             Some(title.as_str()?.to_string())
@@ -499,28 +505,74 @@ fn main() -> Result<(), Error> {
             // contains a valid format specifier (say "%path%", unlikely but possible),
             // the resulting output will be incorrect.
             let mut output = String::with_capacity(input.len());
-            let mut i = 0usize;
-            loop {
-                let sub = &input[i..];
-                if let Some(start) = sub.find('%') {
-                    output += &sub[..start];
-                    let mut spec = &sub[start + 1..];
-                    if let Some(end) = spec.find('%') {
-                        spec = &spec[..end];
-                        if let Some(s) = eval_format(&mut mpv, &metadata, spec) {
-                            output += s.as_str();
+
+            enum State {
+                Raw,
+                Spec(String),
+                Skip(usize, bool),
+            }
+            use State::*;
+
+            let mut state = Raw;
+            let mut stack = Vec::<String>::new();
+            for c in input.chars() {
+                match state {
+                    Raw => match c {
+                        '%' => state = Spec(String::new()),
+                        '[' => stack.push(String::new()),
+                        ']' => match stack.len() {
+                            0 => output.push(c), // XXX
+                            1 => output += stack.pop().unwrap().as_str(),
+                            _ => {
+                                // Collapse the last two elements
+                                let last = stack.pop().unwrap();
+                                *stack.last_mut().unwrap() += last.as_str();
+                            }
+                        },
+                        _ => {
+                            if stack.is_empty() {
+                                output.push(c);
+                            } else {
+                                stack.last_mut().unwrap().push(c);
+                            }
                         }
-                        // Increment the starting index past the ending '%'.
-                        // Add two to account for each delimiter.
-                        i += start + end + 2;
-                    } else {
-                        // Unterminated format specifier
-                        break;
-                    }
-                } else {
-                    // No further format specifiers
-                    output += sub;
-                    break;
+                    },
+                    Spec(ref mut spec) => match c {
+                        '%' => {
+                            if let Some(s) = eval_format(&mut mpv, &metadata, spec.as_str()) {
+                                if stack.is_empty() {
+                                    output += s.as_str();
+                                } else {
+                                    *stack.last_mut().unwrap() += s.as_str();
+                                }
+                                state = Raw;
+                            } else if stack.is_empty() {
+                                state = Raw;
+                            } else {
+                                stack.pop();
+                                state = Skip(stack.len(), false);
+                            }
+                        }
+                        _ => spec.push(c),
+                    },
+                    Skip(ref mut nesting, ref mut spec) => match c {
+                        '%' => *spec = !*spec,
+                        '[' => {
+                            if !*spec {
+                                *nesting += 1;
+                            }
+                        }
+                        ']' => {
+                            if !*spec {
+                                if *nesting <= stack.len() {
+                                    state = Raw;
+                                } else {
+                                    *nesting -= 1;
+                                }
+                            }
+                        }
+                        _ => continue,
+                    },
                 }
             }
             print!("{}", output);
