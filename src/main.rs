@@ -507,7 +507,7 @@ fn main() -> Result<(), Error> {
             use State::*;
 
             let mut state = Raw;
-            let mut stack = Vec::<String>::new();
+            let mut stack = Vec::new();
 
             loop {
                 match state {
