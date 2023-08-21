@@ -508,71 +508,97 @@ fn main() -> Result<(), Error> {
 
             enum State {
                 Raw,
-                Spec(String),
+                Spec,
                 Skip(usize, bool),
             }
             use State::*;
 
             let mut state = Raw;
             let mut stack = Vec::<String>::new();
-            for c in input.chars() {
+            let mut sub = input.as_str();
+            loop {
                 match state {
-                    Raw => match c {
-                        '%' => state = Spec(String::new()),
-                        '[' => stack.push(String::new()),
-                        ']' => match stack.len() {
-                            0 => output.push(c), // XXX
-                            1 => output += stack.pop().unwrap().as_str(),
-                            _ => {
-                                // Collapse the last two elements
-                                let last = stack.pop().unwrap();
-                                *stack.last_mut().unwrap() += last.as_str();
-                            }
-                        },
-                        _ => {
+                    Raw => {
+                        let b = if let Some(i) = sub.find(['%', '[', ']']) {
                             if stack.is_empty() {
-                                output.push(c);
+                                output += &sub[..i];
                             } else {
-                                stack.last_mut().unwrap().push(c);
+                                *stack.last_mut().unwrap() += &sub[..i];
                             }
-                        }
-                    },
-                    Spec(ref mut spec) => match c {
-                        '%' => {
-                            if let Some(s) = eval_format(&mut mpv, &metadata, spec.as_str()) {
-                                if stack.is_empty() {
-                                    output += s.as_str();
-                                } else {
-                                    *stack.last_mut().unwrap() += s.as_str();
+                            let b = sub.as_bytes()[i];
+                            sub = &sub[i + 1..];
+                            b
+                        } else {
+                            // No further format specifiers or groups
+                            output += sub;
+                            break
+                        };
+                        match b {
+                            b'%' => state = Spec,
+                            b'[' => stack.push(String::new()),
+                            b']' => match stack.len() {
+                                0 => output.push(']'), // XXX
+                                1 => output += stack.pop().unwrap().as_str(),
+                                _ => {
+                                    // Collapse the last two elements
+                                    let last = stack.pop().unwrap();
+                                    *stack.last_mut().unwrap() += last.as_str();
                                 }
-                                state = Raw;
-                            } else if stack.is_empty() {
-                                state = Raw;
+                            },
+                            _ => unreachable!(),
+                        }
+                    }
+                    Spec => {
+                        let spec = if let Some(i) = sub.find('%') {
+                            let spec = &sub[..i];
+                            sub = &sub[i + 1..];
+                            spec
+                        } else {
+                            // Unterminated format specifier
+                            break
+                        };
+                        if let Some(s) = eval_format(&mut mpv, &metadata, spec) {
+                            if stack.is_empty() {
+                                output += s.as_str();
                             } else {
-                                stack.pop();
-                                state = Skip(stack.len(), false);
+                                *stack.last_mut().unwrap() += s.as_str();
                             }
+                            state = Raw;
+                        } else if stack.is_empty() {
+                            state = Raw;
+                        } else {
+                            stack.pop();
+                            state = Skip(stack.len(), false);
                         }
-                        _ => spec.push(c),
-                    },
-                    Skip(ref mut nesting, ref mut spec) => match c {
-                        '%' => *spec = !*spec,
-                        '[' => {
-                            if !*spec {
-                                *nesting += 1;
-                            }
-                        }
-                        ']' => {
-                            if !*spec {
-                                if *nesting <= stack.len() {
-                                    state = Raw;
-                                } else {
-                                    *nesting -= 1;
+                    }
+                    Skip(ref mut nesting, ref mut spec) => {
+                        let b = if let Some(i) = sub.find(['%', '[', ']']) {
+                            let b = sub.as_bytes()[i];
+                            sub = &sub[i + 1..];
+                            b
+                        } else {
+                            // Unterminated group or format specifier
+                            break
+                        };
+                        match b {
+                            b'%' => *spec = !*spec,
+                            b'[' => {
+                                if !*spec {
+                                    *nesting += 1;
                                 }
                             }
+                            b']' => {
+                                if !*spec {
+                                    if *nesting <= stack.len() {
+                                        state = Raw;
+                                    } else {
+                                        *nesting -= 1;
+                                    }
+                                }
+                            }
+                            _ => unreachable!(),
                         }
-                        _ => continue,
-                    },
+                    }
                 }
             }
             print!("{}", output);
