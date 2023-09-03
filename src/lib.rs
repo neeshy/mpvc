@@ -1,3 +1,4 @@
+use std::error::Error as StdError;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use std::io::{BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Write};
 use std::iter::once;
@@ -39,6 +40,20 @@ pub enum Error {
     JsonError(JsonError),
     UnexpectedValue,
     MissingValue,
+}
+
+impl StdError for Error {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        match self {
+            Error::MpvError(_) => None,
+            Error::ConnectError(ref e) => Some(e),
+            Error::ReadError(ref e) => Some(e),
+            Error::WriteError(ref e) => Some(e),
+            Error::JsonError(ref e) => Some(e),
+            Error::UnexpectedValue => None,
+            Error::MissingValue => None,
+        }
+    }
 }
 
 impl Display for Error {
