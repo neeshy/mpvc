@@ -6,10 +6,10 @@ description = "An mpc-like CLI tool for mpv"
 edition = "2021"
 
 [dependencies]
-clap = "4.3.24"
+clap = "4.4.2"
 colored = "2.0.4"
 log = "0.4.20"
-serde = "=1.0.171"
+serde = "1.0.188"
 serde_json = "1.0.105"
 
 [dev-dependencies]

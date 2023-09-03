@@ -21,6 +21,7 @@ fn value_to_string(v: &Value) -> Result<String, Error> {
 
 fn main() -> Result<(), Error> {
     let matches = Command::new(env!("CARGO_CRATE_NAME"))
+        .about("An mpc-like CLI tool for mpv")
         .subcommand_required(true)
         .arg_required_else_help(true)
         .arg(Arg::new("socket")
