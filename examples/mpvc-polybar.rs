@@ -62,7 +62,7 @@ fn main() {
     let mut count = Option::<u64>::None;
     let mut title = Option::<String>::None;
     while let Ok(event) = mpv.listen() {
-        if event.get("event") == Some(&Value::String("property-change".to_string())) {
+        if event.get("event") == Some(&Value::String("property-change".to_owned())) {
             if let Some(Value::String(ref prop)) = event.get("name") {
                 match prop.as_str() {
                     "idle-active" => {
@@ -76,9 +76,9 @@ fn main() {
                     "pause" => {
                         if let Some(Value::Bool(b)) = event.get("data") {
                             pause = if *b {
-                                Some("⏸".to_string())
+                                Some("⏸".to_owned())
                             } else {
-                                Some("⏵".to_string())
+                                Some("⏵".to_owned())
                             };
                             print(idle, &pause, &position, &count, &title);
                         }

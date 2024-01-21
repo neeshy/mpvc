@@ -12,7 +12,7 @@ fn value_to_string(v: &Value) -> Result<String, Error> {
     match v {
         Value::Bool(b) => Ok(b.to_string()),
         Value::Number(ref n) => Ok(n.to_string()),
-        Value::String(ref s) => Ok(s.to_string()),
+        Value::String(ref s) => Ok(s.to_owned()),
         Value::Array(_) => Ok(v.to_string()),
         Value::Object(_) => Ok(v.to_string()),
         Value::Null => Err(Error::MissingValue),
@@ -253,7 +253,7 @@ fn main() -> Result<(), Error> {
                         "--no-terminal",
                         "--idle=once",
                         "--vid=no",
-                        ("--input-ipc-server=".to_string() + socket).as_str(),
+                        ("--input-ipc-server=".to_owned() + socket).as_str(),
                     ])
                     .spawn()
                     .expect("mpv failed to start");
@@ -437,7 +437,7 @@ fn main() -> Result<(), Error> {
 
         Some(("metadata", metadata_matches)) => {
             let attribute = metadata_matches.get_one::<String>("attribute").unwrap().as_str();
-            let metadata = mpv.get_property(("metadata/by-key/".to_string() + attribute).as_str())?;
+            let metadata = mpv.get_property(("metadata/by-key/".to_owned() + attribute).as_str())?;
             println!("{}", value_to_string(&metadata)?);
         }
 
@@ -451,14 +451,14 @@ fn main() -> Result<(), Error> {
                 }
 
                 match spec {
-                    "" => Some("%".to_string()),
-                    "n" => Some("\n".to_string()),
-                    "[" | "]" => Some(spec.to_string()),
+                    "" => Some("%".to_owned()),
+                    "n" => Some("\n".to_owned()),
+                    "[" | "]" => Some(spec.to_owned()),
                     "title" => {
                         if let Some(title) = metadata.get("title") {
-                            Some(title.as_str()?.to_string())
+                            Some(title.as_str()?.to_owned())
                         } else {
-                            Some(mpv.get_property("media-title").ok()?.as_str()?.to_string())
+                            Some(mpv.get_property("media-title").ok()?.as_str()?.to_owned())
                         }
                     }
                     "time" => {
@@ -483,9 +483,9 @@ fn main() -> Result<(), Error> {
                             let pair = &spec[i + 1..];
                             let j = pair.find(':')?;
                             if mpv.get_property(property).ok()?.as_bool()? {
-                                Some(pair[..j].to_string())
+                                Some(pair[..j].to_owned())
                             } else {
-                                Some(pair[j + 1..].to_string())
+                                Some(pair[j + 1..].to_owned())
                             }
                         } else if let Some(m) = metadata.get(spec) {
                             Some(value_to_string(m).ok()?)

@@ -102,8 +102,8 @@ impl Mpv {
         self.counter += 1;
         let c = Value::Object({
             let mut m = Map::with_capacity(2);
-            m.insert("command".to_string(), command.collect());
-            m.insert("request_id".to_string(), self.counter.into());
+            m.insert("command".to_owned(), command.collect());
+            m.insert("request_id".to_owned(), self.counter.into());
             m
         }).to_string();
         debug!("Command: {}", c);
@@ -114,7 +114,7 @@ impl Mpv {
             if n == 0 {
                 return Err(Error::ReadError(IoError::from(IoErrorKind::UnexpectedEof)));
             }
-            response = response.trim_end().to_string();
+            response = response.trim_end().to_owned();
             debug!("Response: {}", response);
 
             let r = response.parse::<Value>().map_err(Error::JsonError)?;
@@ -149,7 +149,7 @@ impl Mpv {
                     Ok(Value::Null)
                 }
             } else {
-                Err(Error::MpvError(error.to_string()))
+                Err(Error::MpvError(error.to_owned()))
             };
         }
     }
@@ -274,6 +274,6 @@ impl Mpv {
         if n == 0 {
             return Err(Error::ReadError(IoError::from(IoErrorKind::UnexpectedEof)));
         }
-        Ok(response.trim_end().to_string())
+        Ok(response.trim_end().to_owned())
     }
 }
