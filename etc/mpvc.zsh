@@ -15,8 +15,8 @@ _mpvc() {
 
     local context curcontext="$curcontext" state line
     _arguments "${_arguments_options[@]}" \
-'-S+[]:/path/to/socket: ' \
-'--socket=[]:/path/to/socket: ' \
+'-S+[]:/path/to/socket:_files' \
+'--socket=[]:/path/to/socket:_files' \
 '-h[Print help]' \
 '--help[Print help]' \
 ":: :_mpvc_commands" \
@@ -87,7 +87,7 @@ _arguments "${_arguments_options[@]}" \
 '--type=[]: :(file playlist)' \
 '-h[Print help]' \
 '--help[Print help]' \
-'*::file:' \
+'*::file:_files' \
 && ret=0
 ;;
 (playlist)

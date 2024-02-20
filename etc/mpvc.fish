@@ -1,4 +1,4 @@
-complete -c mpvc -n "__fish_use_subcommand" -s S -l socket -r
+complete -c mpvc -n "__fish_use_subcommand" -s S -l socket -r -F
 complete -c mpvc -n "__fish_use_subcommand" -s h -l help -d 'Print help'
 complete -c mpvc -n "__fish_use_subcommand" -f -a "play" -d 'Resume playback'
 complete -c mpvc -n "__fish_use_subcommand" -f -a "pause" -d 'Pause playback'

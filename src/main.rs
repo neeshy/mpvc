@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use mpvc::{Error, Mpv};
 
-use clap::{Arg, ArgAction, Command};
+use clap::{Arg, ArgAction, Command, ValueHint};
 use colored::Colorize;
 use serde_json::{Map, Value};
 
@@ -28,6 +28,7 @@ fn main() -> Result<(), Error> {
             .short('S')
             .long("socket")
             .value_name("/path/to/socket")
+            .value_hint(ValueHint::AnyPath)
             .default_value("/tmp/mpv.sock"))
         .subcommand(Command::new("play")
             .about("Resume playback"))
@@ -63,6 +64,7 @@ fn main() -> Result<(), Error> {
             .about("Load the given file or playlist and play it")
             .visible_alias("load")
             .arg(Arg::new("file")
+                .value_hint(ValueHint::AnyPath)
                 .num_args(1..)
                 .required(true))
             .arg(Arg::new("mode")
