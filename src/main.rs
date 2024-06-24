@@ -1,10 +1,12 @@
+use std::io;
 use std::process::Command as Cmd;
 use std::thread;
 use std::time::Duration;
 
 use mpvc::{Error, Mpv};
 
-use clap::{Arg, ArgAction, Command, ValueHint};
+use clap::{builder::EnumValueParser, Arg, ArgAction, Command, ValueHint};
+use clap_complete::Shell;
 use colored::Colorize;
 use serde_json::{Map, Value};
 
@@ -20,7 +22,7 @@ fn value_to_string(v: &Value) -> Result<String, Error> {
 }
 
 fn main() -> Result<(), Error> {
-    let matches = Command::new(env!("CARGO_CRATE_NAME"))
+    let mut cli = Command::new(env!("CARGO_CRATE_NAME"))
         .about("An mpc-like CLI tool for mpv")
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -46,16 +48,14 @@ fn main() -> Result<(), Error> {
             .arg(Arg::new("target")
                 .required(true))
             .arg(Arg::new("mode")
+                .help("relative: Seek relative to the current position (a negative value seeks backwards)\n\
+                    absolute: Seek to a given position (a negative value seeks starting from the end of the file)\n\
+                    absolute-percent: Seek to a given position in percentage\n\
+                    relative-percent: Seek relative to the current position in percentage\n")
                 .short('m')
                 .long("mode")
                 .value_parser(["relative", "relative-percent", "absolute", "absolute-percent"])
-                .hide_possible_values(true)
-                .default_value("relative")
-                .help("<relative|relative-percent|absolute|absolute-percent>\n\
-                <relative>: Seek relative to the current position (a negative value seeks backwards)\n\
-                <absolute>: Seek to a given position (a negative value seeks starting from the end of the file)\n\
-                <absolute-percent>: Seek to a given position in percentage\n\
-                <relative-percent>: Seek relative to the current position in percentage\n")))
+                .default_value("relative")))
         .subcommand(Command::new("restart")
             .about("Restart playback of the current file (equivalent to 'seek -m absolute 0')"))
         .subcommand(Command::new("kill")
@@ -68,23 +68,22 @@ fn main() -> Result<(), Error> {
                 .num_args(1..)
                 .required(true))
             .arg(Arg::new("mode")
+                .help("replace: Stop playback of the current file and play the new file immediately\n\
+                    append: Append the file to the playlist\n\
+                    append-play: Append the file and if nothing is currently playing, start playback\n\
+                    append-next: Append the file to the playlist and place it in the next position\n")
                 .short('m')
                 .long("mode")
                 .value_parser(["replace", "append", "append-play", "append-next"])
-                .hide_possible_values(true)
-                .default_value("append-play")
-                .help("<replace|append|append-play|append-next>\n\
-                <replace>: Stop playback of the current file, and play the new file immediately\n\
-                <append>: Append the file to the playlist\n\
-                <append-play>: Append the file, and if nothing is currently playing, start playback\n\
-                <append-next>: Append the file to the playlist, and place it in the next position\n"))
+                .default_value("append-play"))
             .arg(Arg::new("type")
                 .short('t')
                 .long("type")
                 .value_parser(["file", "playlist"])
                 .default_value("file")))
         .subcommand(Command::new("playlist")
-            .about("Print playlist entries"))
+            .about("Print playlist entries")
+            .visible_alias("list"))
         .subcommand(Command::new("stop")
             .about("Stop playback and clear the playlist"))
         .subcommand(Command::new("clear")
@@ -116,7 +115,8 @@ fn main() -> Result<(), Error> {
                 .value_parser(str::parse::<usize>)
                 .required(true)))
         .subcommand(Command::new("shuffle")
-            .about("Shuffle the playlist"))
+            .about("Shuffle the playlist")
+            .visible_alias("shuf"))
         .subcommand(Command::new("reverse")
             .about("Reverse the playlist")
             .visible_alias("rev"))
@@ -138,14 +138,12 @@ fn main() -> Result<(), Error> {
                 .value_parser(str::parse::<f64>)
                 .required(true))
             .arg(Arg::new("mode")
+                .help("absolute: Set the volume\n\
+                    relative: Change the volume relative to the current level (a negative value decreases the level)\n")
                 .short('m')
                 .long("mode")
                 .value_parser(["absolute", "relative"])
-                .hide_possible_values(true)
-                .default_value("absolute")
-                .help("<absolute|relative>\n\
-                <absolute>: Set the volume\n\
-                <relative>: Change the volume relative to the current level (a negative value decreases the level)\n")))
+                .default_value("absolute")))
         .subcommand(Command::new("mute")
             .about("Control whether audio output is muted")
             .arg(Arg::new("arg")
@@ -229,6 +227,14 @@ fn main() -> Result<(), Error> {
             .about("Block until one of the given events is triggered, or until one of the given properties is changed")
             .arg_required_else_help(true)
             .arg(Arg::new("event")
+                .help("start-file: Happens right before a new file is loaded. When you receive this, the player is loading the file (or possibly already done with it).\n\
+                    end-file: Happens after a file was unloaded. Typically, the player will load the next file right away, or quit if this was the last file.\n\
+                    file-loaded: Happens after a file was loaded and begins playback.\n\
+                    seek: Happens on seeking. (This might include cases when the player seeks internally, even without user interaction. This includes e.g. segment changes when playing ordered chapters Matroska files.)\n\
+                    playback-restart: Start of playback after seek or after file was loaded.\n\
+                    shutdown: Sent when the player quits, and the script should terminate. Normally handled automatically. See Details on the script initialization and lifecycle.\n\
+                    video-reconfig: Happens on video output or filter reconfig.\n\
+                    audio-reconfig: Happens on audio output or filter reconfig.\n")
                 .value_parser([
                     "start-file",
                     "end-file",
@@ -242,7 +248,19 @@ fn main() -> Result<(), Error> {
             .arg(Arg::new("property")
                 .num_args(1..)
                 .last(true)))
-        .get_matches();
+        .subcommand(Command::new("completion")
+            .about("Generate a shell completion script")
+            .hide(true)
+            .arg(Arg::new("shell")
+                .value_parser(EnumValueParser::<Shell>::new())
+                .required(true)));
+    let matches = cli.get_matches_mut();
+
+    if let Some(("completion", completion_matches)) = matches.subcommand() {
+        let shell = *completion_matches.get_one::<Shell>("shell").unwrap();
+        clap_complete::generate(shell, &mut cli, env!("CARGO_CRATE_NAME"), &mut io::stdout());
+        return Ok(());
+    }
 
     // Input socket is always present, therefore unwrap
     let socket = matches.get_one::<String>("socket").unwrap();
