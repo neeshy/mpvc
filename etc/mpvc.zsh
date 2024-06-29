@@ -37,7 +37,7 @@ _mpvc() {
     # TODO don't sort matches
     local state line
     _arguments -s -S : \
-        '(-S --socket)'{-S+,--socket=}'[]:/path/to/socket:_files' \
+        '(-S --socket)'{-S+,--socket=}'[Path to mpv socket]:/path/to/socket:_files' \
         '(- *)'{-h,--help}'[Print help]' \
         ":mpvc commands:((${commands[*]}))" \
         '*:: :->args'
@@ -47,7 +47,7 @@ _mpvc() {
             _arguments -s -S : '(- *)'{-h,--help}'[Print help]';;
         seek)
             _arguments -s -S : \
-                {-m+,--mode=}'[]:mode:((
+                '(-m --mode)'{-m+,--mode=}'[Seeking mode]:mode:((
                     relative\:"Seek relative to the current position (a negative value seeks backwards)"
                     absolute\:"Seek to a given position (a negative value seeks starting from the end of the file)"
                     absolute-percent\:"Seek to a given position in percentage"
@@ -57,13 +57,13 @@ _mpvc() {
                 ':target:';;
         add|load)
             _arguments -s -S : \
-                {-m+,--mode=}'[]:mode:((
+                '(-m --mode)'{-m+,--mode=}'[Loading mode]:mode:((
                     replace\:"Stop playback of the current file and play the new file immediately"
                     append\:"Append the file to the playlist"
                     append-play\:"Append the file and if nothing is currently playing, start playback"
                     append-next\:"Append the file to the playlist and place it in the next position"
                 ))' \
-                {-t+,--type=}'[]:type:(file playlist)' \
+                '(-t --type)'{-t+,--type=}'[Entry type]:type:(file playlist)' \
                 '(- *)'{-h,--help}'[Print help]' \
                 '*::file:_files';;
         remove|rm)
@@ -85,18 +85,18 @@ _mpvc() {
                 ':arg:(on off toggle)';;
         volume)
             _arguments -s -S : \
-                {-m+,--mode=}'[]:mode:((absolute\:"Set the volume" relative\:"Change the volume relative to the current level (a negative value decreases the level)"))' \
+                '(-m --mode)'{-m+,--mode=}'[Volume mode]:mode:((absolute\:"Set the volume" relative\:"Change the volume relative to the current level (a negative value decreases the level)"))' \
                 '(- *)'{-h,--help}'[Print help]' \
                 ':num:';;
         set)
             _arguments -s -S : \
-                {-j,--json}'[Parse <value> as JSON]' \
+                '(-j --json)'{-j,--json}'[Parse <value> as JSON]' \
                 '(- *)'{-h,--help}'[Print help]' \
                 ':property:_mpvc__property' \
                 ':value:';;
         get)
             _arguments -s -S : \
-                {-j,--json}'[Print property as JSON]' \
+                '(-j --json)'{-j,--json}'[Print property as JSON]' \
                 '(- *)'{-h,--help}'[Print help]' \
                 ':property:_mpvc__property';;
         run)
