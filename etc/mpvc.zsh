@@ -14,16 +14,16 @@ _mpvc() {
         {playlist,list}'\:"Print playlist entries"'
         stop'\:"Stop playback and clear the playlist"'
         clear'\:"Clear the playlist, except the currently playing file"'
-        {remove,rm}'\:"Remove the given entry from the playlist (0-indexed). If the entry is currently playing, playback will stop."'
+        {remove,rm}'\:"Remove the given entry from the playlist, or the currently playing entry if the argument is omitted (0-indexed). If the entry is currently playing, playback will stop."'
         {move,mv}'\:"Move the given playlist entry to a new position"'
         play-next'\:"Move the given playlist entry to be after the currently playing file"'
         {position,pos}'\:"Play the given entry in the playlist"'
         {shuffle,shuf}'\:"Shuffle the playlist"'
         {reverse,rev}'\:"Reverse the playlist"'
-        loop-file'\:"Control whether the current file should be repeated after playback"'
-        loop-playlist'\:"Control whether the playlist should be repeated after the end is reached"'
+        loop-file'\:"Control whether the current file should be repeated after playback. Toggle by omitting the argument."'
+        loop-playlist'\:"Control whether the playlist should be repeated after the end is reached. Toggle by omitting the argument."'
         volume'\:"Control the volume level"'
-        mute'\:"Control whether audio output is muted"'
+        mute'\:"Control whether audio output is muted. Toggle by omitting the argument."'
         set'\:"Set a property to the given value"'
         get'\:"Retrieve a property (see property '\''property-list'\'' for possible values)"'
         run'\:"Run an mpv command"'
@@ -83,7 +83,7 @@ _mpvc() {
         loop-file|loop-playlist|mute)
             _arguments -s -S : \
                 '(- *)'{-h,--help}'[Print help]' \
-                ':arg:(on off toggle)';;
+                '::arg:(on off)';;
         volume)
             _arguments -s -S : \
                 '(-m --mode)'{-m+,--mode=}'[Volume mode]:mode:((absolute\:"Set the volume" relative\:"Change the volume relative to the current level (a negative value decreases the level)"))' \

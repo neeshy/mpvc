@@ -90,7 +90,8 @@ fn main() -> Result<(), Error> {
         .subcommand(Command::new("clear")
             .about("Clear the playlist, except the currently playing file"))
         .subcommand(Command::new("remove")
-            .about("Remove the given entry from the playlist (0-indexed). If the entry is currently playing, playback will stop.")
+            .about("Remove the given entry from the playlist, or the currently playing entry if the argument is omitted (0-indexed). \
+                   If the entry is currently playing, playback will stop.")
             .visible_alias("rm")
             .arg(Arg::new("id")
                 .value_parser(str::parse::<usize>)))
@@ -121,17 +122,15 @@ fn main() -> Result<(), Error> {
             .about("Reverse the playlist")
             .visible_alias("rev"))
         .subcommand(Command::new("loop-file")
-            .about("Control whether the current file should be repeated after playback")
+            .about("Control whether the current file should be repeated after playback. Toggle by omitting the argument.")
             .arg(Arg::new("arg")
-                .value_name("on|off|toggle")
-                .value_parser(["on", "off", "toggle"])
-                .required(true)))
+                .value_name("on|off")
+                .value_parser(["on", "off"])))
         .subcommand(Command::new("loop-playlist")
-            .about("Control whether the playlist should be repeated after the end is reached")
+            .about("Control whether the playlist should be repeated after the end is reached. Toggle by omitting the argument.")
             .arg(Arg::new("arg")
-                .value_name("on|off|toggle")
-                .value_parser(["on", "off", "toggle"])
-                .required(true)))
+                .value_name("on|off")
+                .value_parser(["on", "off"])))
         .subcommand(Command::new("volume")
             .about("Control the volume level")
             .arg(Arg::new("num")
@@ -145,11 +144,10 @@ fn main() -> Result<(), Error> {
                 .value_parser(["absolute", "relative"])
                 .default_value("absolute")))
         .subcommand(Command::new("mute")
-            .about("Control whether audio output is muted")
+            .about("Control whether audio output is muted. Toggle by omitting the argument.")
             .arg(Arg::new("arg")
-                .value_name("on|off|toggle")
-                .value_parser(["on", "off", "toggle"])
-                .required(true)))
+                .value_name("on|off")
+                .value_parser(["on", "off"])))
         .subcommand(Command::new("set")
             .about("Set a property to the given value")
             .arg(Arg::new("json")
@@ -368,23 +366,25 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("loop-file", loop_file_matches)) => {
-            let arg = match loop_file_matches.get_one::<String>("arg").unwrap().as_str() {
-                "on" => true,
-                "off" => false,
-                "toggle" => matches!(value_to_string(&mpv.get_property("loop-file")?)?.as_str(), "false"),
-                _ => unreachable!(),
-            };
-            mpv.set_property("loop-file", arg)?;
+            match loop_file_matches.get_one::<String>("arg") {
+                Some(arg) => match arg.as_str() {
+                    "on" => mpv.set_property("loop-file", "inf")?,
+                    "off" => mpv.set_property("loop-file", false)?,
+                    _ => unreachable!(),
+                },
+                None => mpv.command_arg("cycle-values", ["loop-file".into(), Value::Bool(false), "inf".into()])?,
+            }
         }
 
         Some(("loop-playlist", loop_playlist_matches)) => {
-            let arg = match loop_playlist_matches.get_one::<String>("arg").unwrap().as_str() {
-                "on" => true,
-                "off" => false,
-                "toggle" => matches!(value_to_string(&mpv.get_property("loop-playlist")?)?.as_str(), "false"),
-                _ => unreachable!(),
-            };
-            mpv.set_property("loop-playlist", arg)?;
+            match loop_playlist_matches.get_one::<String>("arg") {
+                Some(arg) => match arg.as_str() {
+                    "on" => mpv.set_property("loop-playlist", "inf")?,
+                    "off" => mpv.set_property("loop-playlist", false)?,
+                    _ => unreachable!(),
+                },
+                None => mpv.command_arg("cycle-values", ["loop-playlist".into(), Value::Bool(false), "inf".into()])?,
+            }
         }
 
         Some(("volume", volume_matches)) => {
@@ -397,11 +397,13 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("mute", mute_matches)) => {
-            match mute_matches.get_one::<String>("arg").unwrap().as_str() {
-                "on" => mpv.set_property("mute", true)?,
-                "off" => mpv.set_property("mute", false)?,
-                "toggle" => mpv.command_arg("cycle", ["mute"])?,
-                _ => unreachable!(),
+            match mute_matches.get_one::<String>("arg") {
+                Some(arg) => match arg.as_str() {
+                    "on" => mpv.set_property("mute", true)?,
+                    "off" => mpv.set_property("mute", false)?,
+                    _ => unreachable!(),
+                },
+                None => mpv.command_arg("cycle", ["mute"])?,
             }
         }
 
