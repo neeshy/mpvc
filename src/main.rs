@@ -92,8 +92,7 @@ fn main() -> Result<(), Error> {
             .about("Remove the given entry from the playlist (0-indexed). If the entry is currently playing, playback will stop.")
             .visible_alias("rm")
             .arg(Arg::new("id")
-                .value_parser(str::parse::<usize>)
-                .required(true)))
+                .value_parser(str::parse::<usize>)))
         .subcommand(Command::new("move")
             .about("Move the given playlist entry to a new position")
             .visible_alias("mv")
@@ -351,8 +350,12 @@ fn main() -> Result<(), Error> {
         Some(("clear", _)) => mpv.command("playlist-clear")?,
 
         Some(("remove", remove_matches)) => {
-            let id = *remove_matches.get_one::<usize>("id").unwrap();
-            mpv.command_arg("playlist-remove", [id])?;
+            let value: Value = if let Some(id) = remove_matches.get_one::<usize>("id") {
+                (*id).into()
+            } else {
+                "current".into()
+            };
+            mpv.command_arg("playlist-remove", [value])?;
         }
 
         Some(("move", move_matches)) => {

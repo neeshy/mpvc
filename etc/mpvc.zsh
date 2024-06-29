@@ -66,15 +66,19 @@ _mpvc() {
                 {-t+,--type=}'[]:type:(file playlist)' \
                 '(- *)'{-h,--help}'[Print help]' \
                 '*::file:_files';;
-        remove|rm|play-next|position|pos)
+        remove|rm)
             _arguments -s -S : \
                 '(- *)'{-h,--help}'[Print help]' \
-                ':id:_mpvc__playlist';;
+                '::id:_mpvc__playlist';;
         move|mv)
             _arguments -s -S : \
                 '(- *)'{-h,--help}'[Print help]' \
                 ':from:_mpvc__playlist' \
                 ':to:_mpvc__playlist';;
+        play-next|position|pos)
+            _arguments -s -S : \
+                '(- *)'{-h,--help}'[Print help]' \
+                ':id:_mpvc__playlist';;
         loop-file|loop-playlist|mute)
             _arguments -s -S : \
                 '(- *)'{-h,--help}'[Print help]' \
