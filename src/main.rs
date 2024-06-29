@@ -71,10 +71,11 @@ fn main() -> Result<(), Error> {
                 .help("replace: Stop playback of the current file and play the new file immediately\n\
                     append: Append the file to the playlist\n\
                     append-play: Append the file and if nothing is currently playing, start playback\n\
-                    append-next: Append the file to the playlist and place it in the next position\n")
+                    insert-next: Insert the file into the playlist directly after the current entry\n\
+                    insert-next-play: Insert the file into the next position and if nothing is currently playing, start playback\n")
                 .short('m')
                 .long("mode")
-                .value_parser(["replace", "append", "append-play", "append-next"])
+                .value_parser(["replace", "append", "append-play", "append-next", "insert-next", "insert-next-play"])
                 .default_value("append-play"))
             .arg(Arg::new("type")
                 .short('t')
@@ -261,7 +262,6 @@ fn main() -> Result<(), Error> {
         return Ok(());
     }
 
-    // Input socket is always present, therefore unwrap
     let socket = matches.get_one::<String>("socket").unwrap();
     let mut mpv = match Mpv::connect(socket) {
         Ok(instance) => instance,
@@ -304,25 +304,8 @@ fn main() -> Result<(), Error> {
                 _ => unreachable!(),
             };
             let mode = add_matches.get_one::<String>("mode").unwrap().as_str();
-            match mode {
-                "replace" | "append" | "append-play" => {
-                    for file in add_matches.get_many::<String>("file").unwrap() {
-                        mpv.command_arg(command, [file.as_str(), mode])?
-                    }
-                }
-                "append-next" => {
-                    let files = add_matches.get_many::<String>("file").unwrap();
-                    let files_len = files.len();
-                    let count = mpv.get_property("playlist-count")?.as_u64().ok_or(Error::UnexpectedValue)? as usize;
-                    for file in files {
-                        mpv.command_arg(command, [file.as_str(), "append"])?;
-                    }
-                    let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize + 1;
-                    for i in 0..files_len {
-                        mpv.command_arg("playlist-move", [count + i, pos + i])?;
-                    }
-                }
-                _ => unreachable!(),
+            for file in add_matches.get_many::<String>("file").unwrap() {
+                mpv.command_arg(command, [file.as_str(), mode])?
             }
         }
 

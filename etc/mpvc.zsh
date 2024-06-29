@@ -61,7 +61,8 @@ _mpvc() {
                     replace\:"Stop playback of the current file and play the new file immediately"
                     append\:"Append the file to the playlist"
                     append-play\:"Append the file and if nothing is currently playing, start playback"
-                    append-next\:"Append the file to the playlist and place it in the next position"
+                    insert-next\:"Insert the file into the playlist directly after the current entry"
+                    insert-next-play\:"Insert the file into the next position and if nothing is currently playing, start playback"
                 ))' \
                 '(-t --type)'{-t+,--type=}'[Entry type]:type:(file playlist)' \
                 '(- *)'{-h,--help}'[Print help]' \
