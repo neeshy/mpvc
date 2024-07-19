@@ -1,14 +1,15 @@
 #!/bin/sh
 set -euf
 mpvc playlist >/dev/null
-FZF_DEFAULT_COMMAND="mpvc playlist" fzf \
-  --ansi --reverse --no-sort --multi \
-  --bind='ctrl-p:execute-silent(mpvc toggle &)' \
-  --bind='ctrl-o:execute-silent(mpvc position {n} &)' \
-  --bind='ctrl-t:reload(mpvc remove {n}; mpvc playlist)' \
+exec fzf \
+  --ansi --no-sort --layout=reverse \
+  --bind='start:reload(mpvc playlist)' \
+  --bind='enter:reload(mpvc position {n}; sleep 0.1; mpvc playlist)' \
   --bind='ctrl-r:reload(mpvc playlist)' \
-  --bind='ctrl-s:execute-silent(mpvc seek 20 &)' \
-  --bind='ctrl-d:execute-silent(mpvc seek -20 &)' \
-  --header='mpvc-fzf help: C-o:play C-r:reload C-t:remove C-s:seek C-d:rewind C-p:toggle' \
+  --bind='ctrl-p:reload(mpvc toggle; mpvc playlist)' \
+  --bind='ctrl-t:reload(mpvc remove {n}; mpvc playlist)' \
+  --bind='ctrl-s:reload(mpvc seek 20; mpvc playlist)' \
+  --bind='ctrl-d:reload(mpvc seek -20; mpvc playlist)' \
+  --header='mpvc-fzf help: Enter:play C-r:reload C-p:toggle C-t:remove C-s:seek C-d:rewind' \
   --preview-window=up:2 \
   --preview='mpvc format "[%artist% - ]%title%%n%%pause?⏸:⏵% #%position%/%playlist-count% %time%/%duration% (%percentage%%%)%n%"'
