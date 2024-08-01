@@ -506,7 +506,9 @@ fn main() -> Result<(), Error> {
 
             let mut input = format_matches.get_one::<String>("format-string").unwrap().as_str();
             let mut output = String::with_capacity(input.len());
-            let metadata = mpv.get_property("metadata")?.as_object().ok_or(Error::UnexpectedValue)?
+            let metadata = mpv.get_property("metadata")
+                .unwrap_or_else(|_| Value::Object(Map::<String, Value>::new()))
+                .as_object().ok_or(Error::UnexpectedValue)?
                 .iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect();
 
             enum State {

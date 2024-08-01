@@ -40,11 +40,11 @@ fn main() {
                     let _ = fs::remove_file("/tmp/mpv.sock");
                 }
             } else {
-                println!("N/A");
+                println!("");
                 let _ = watch();
             }
         } else {
-            println!("N/A");
+            println!("");
             let _ = watch();
         }
     };
@@ -69,7 +69,7 @@ fn main() {
                         if let Some(Value::Bool(b)) = event.get("data") {
                             idle = *b;
                             if idle {
-                                println!("N/A");
+                                println!("⏹ Stopped");
                             }
                         }
                     }

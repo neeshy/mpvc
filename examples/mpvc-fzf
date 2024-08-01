@@ -7,7 +7,7 @@ args=(
   --ansi --no-sort --layout=reverse
   --bind='start:reload(mpvc playlist)'
   --preview-window=up:2
-  --preview='mpvc format "[%artist% - ]%title%%n%%pause?⏸:⏵% #%position%/%playlist-count% %time%/%duration% (%percentage%%%)%n%"'
+  --preview='mpvc format "%idle-active?⏹ Stopped:%[[%artist% - ]%title%%n%%pause?⏸:⏵% #%position%/%playlist-count% %time%/%duration% (%percentage%%%)%n%"]'
 )
 
 user_args=()
