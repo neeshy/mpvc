@@ -1,15 +1,48 @@
-#!/bin/sh
-set -euf
+#!/bin/bash
+set -eufo pipefail
+
 mpvc playlist >/dev/null
-exec fzf \
-  --ansi --no-sort --layout=reverse \
-  --bind='start:reload(mpvc playlist)' \
-  --bind='enter:reload(mpvc position {n}; sleep 0.1; mpvc playlist)' \
-  --bind='ctrl-r:reload(mpvc playlist)' \
-  --bind='ctrl-p:reload(mpvc toggle; mpvc playlist)' \
-  --bind='ctrl-t:reload(mpvc remove {n}; mpvc playlist)' \
-  --bind='ctrl-s:reload(mpvc seek 20; mpvc playlist)' \
-  --bind='ctrl-d:reload(mpvc seek -20; mpvc playlist)' \
-  --header='mpvc-fzf help: Enter:play C-r:reload C-p:toggle C-t:remove C-s:seek C-d:rewind' \
-  --preview-window=up:2 \
+
+args=(
+  --ansi --no-sort --layout=reverse
+  --bind='start:reload(mpvc playlist)'
+  --preview-window=up:2
   --preview='mpvc format "[%artist% - ]%title%%n%%pause?⏸:⏵% #%position%/%playlist-count% %time%/%duration% (%percentage%%%)%n%"'
+)
+
+user_args=()
+for arg in "$@"; do
+  user_args+=("$(printf '%q' "$arg")")
+done
+
+path="$(printf '%q' "${BASH_SOURCE[0]}")"
+search_args=()
+for arg in "${args[@]}" \
+    --prompt="Search song > " \
+    --bind="enter:become(exec -- $path ${user_args[*]} --query={q})" \
+    --bind="esc:become(exec -- $path ${user_args[*]})" \
+    --header="mpvc-fzf help: Esc:abort Enter:search"; do
+  search_args+=("$(printf '%q' "$arg")")
+done
+
+query="$*"
+SHELL="/bin/bash" exec fzf "${args[@]}" \
+  --prompt="Select song > " \
+  --bind="change:change-query($query)" \
+  --bind=q:abort \
+  --bind=j:down,k:up \
+  --bind=d:half-page-down,u:half-page-up \
+  --bind=space:page-down,backspace:page-up \
+  --bind=g:first,G:last \
+  --bind=f:jump \
+  --bind='r:reload(mpvc playlist)' \
+  --bind='p:reload(mpvc toggle; mpvc playlist)' \
+  --bind='x:reload(mpvc remove -- {n}; sleep 0.1; mpvc playlist)' \
+  --bind='<:reload(mpvc prev; sleep 0.1; mpvc playlist)' \
+  --bind='>:reload(mpvc next; sleep 0.1; mpvc playlist)' \
+  --bind='l:reload(mpvc seek -- 20; mpvc playlist)' \
+  --bind='h:reload(mpvc seek -- -20; mpvc playlist)' \
+  --bind='enter:reload(mpvc position -- {n}; sleep 0.1; mpvc playlist)' \
+  --bind="/:become(set -eufo pipefail; mpvc playlist >/dev/null; exec fzf ${search_args[*]} ${user_args[*]} --query={q})" \
+  --header="mpvc-fzf help: Enter:play /:search r:reload p:toggle x:remove <:prev >:next l:seek h:rewind f:jump" \
+  "$@"
