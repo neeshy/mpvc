@@ -114,7 +114,7 @@ impl Mpv {
             if n == 0 {
                 return Err(Error::ReadError(IoError::from(IoErrorKind::UnexpectedEof)));
             }
-            response = response.trim_end().to_owned();
+            let response = response.trim_end();
             debug!("Response: {}", response);
 
             let r = response.parse::<Value>().map_err(Error::JsonError)?;
