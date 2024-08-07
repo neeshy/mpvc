@@ -495,8 +495,8 @@ fn main() -> Result<(), Error> {
                             } else {
                                 Some(pair[j + 1..].to_owned())
                             }
-                        } else if let Some(m) = metadata.get(spec) {
-                            Some(value_to_string(m).ok()?)
+                        } else if let Some(metadata) = metadata.get(spec) {
+                            Some(value_to_string(metadata).ok()?)
                         } else {
                             value_to_string(&mpv.get_property(spec).ok()?).ok()
                         }

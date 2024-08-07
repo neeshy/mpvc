@@ -100,14 +100,14 @@ impl Mpv {
 
     fn _command<I: Iterator<Item = Value>>(&mut self, command: I) -> Result<Value, Error> {
         self.counter += 1;
-        let c = Value::Object({
-            let mut m = Map::with_capacity(2);
-            m.insert("command".to_owned(), command.collect());
-            m.insert("request_id".to_owned(), self.counter.into());
-            m
+        let command = Value::Object({
+            let mut map = Map::with_capacity(2);
+            map.insert("command".to_owned(), command.collect());
+            map.insert("request_id".to_owned(), self.counter.into());
+            map
         }).to_string();
-        debug!("Command: {}", c);
-        self.reader.get_ref().write_all((c + "\n").as_bytes()).map_err(Error::WriteError)?;
+        debug!("Command: {}", command);
+        self.reader.get_ref().write_all((command + "\n").as_bytes()).map_err(Error::WriteError)?;
         loop {
             let mut response = String::new();
             let n = self.reader.read_line(&mut response).map_err(Error::ReadError)?;
@@ -117,9 +117,9 @@ impl Mpv {
             let response = response.trim_end();
             debug!("Response: {}", response);
 
-            let r = response.parse::<Value>().map_err(Error::JsonError)?;
+            let response = response.parse::<Value>().map_err(Error::JsonError)?;
 
-            let mut map = if let Value::Object(map) = r {
+            let mut map = if let Value::Object(map) = response {
                 Ok(map)
             } else {
                 Err(Error::UnexpectedValue)
@@ -246,9 +246,9 @@ impl Mpv {
             let response = self.listen_raw()?;
             debug!("Event: {}", response);
 
-            let e = response.parse::<Value>().map_err(Error::JsonError)?;
+            let event = response.parse::<Value>().map_err(Error::JsonError)?;
 
-            if let Value::Object(map) = e {
+            if let Value::Object(map) = event {
                 if let Some(Value::String(_)) = map.get("event") {
                     return Ok(map);
                 } else {
