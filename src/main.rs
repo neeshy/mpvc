@@ -290,7 +290,7 @@ fn main() -> Result<(), Error> {
         Some(("seek", seek_matches)) => {
             let target = seek_matches.get_one::<String>("target").unwrap().as_str();
             let mode = seek_matches.get_one::<String>("mode").unwrap().as_str();
-            mpv.command_arg("seek", [target, mode])?
+            mpv.command_arg("seek", [target, mode])?;
         }
         Some(("restart", _)) => mpv.command_arg("seek", ["0", "absolute"])?,
         Some(("kill", _)) => mpv.command("quit")?,
@@ -303,7 +303,7 @@ fn main() -> Result<(), Error> {
             };
             let mode = add_matches.get_one::<String>("mode").unwrap().as_str();
             for file in add_matches.get_many::<String>("file").unwrap() {
-                mpv.command_arg(command, [file.as_str(), mode])?
+                mpv.command_arg(command, [file.as_str(), mode])?;
             }
         }
 
@@ -317,7 +317,7 @@ fn main() -> Result<(), Error> {
                 } else if let Some(filename) = entry.get("filename") {
                     filename
                 } else {
-                    return Err(Error::MissingValue)
+                    return Err(Error::MissingValue);
                 }.as_str().ok_or(Error::UnexpectedValue)?;
                 let mut output = format!("{}\t{}", i + 1, title);
                 if entry.contains_key("current") {
@@ -342,18 +342,18 @@ fn main() -> Result<(), Error> {
         Some(("move", move_matches)) => {
             let from = *move_matches.get_one::<usize>("from").unwrap();
             let to = *move_matches.get_one::<usize>("to").unwrap();
-            mpv.command_arg("playlist-move", [from, to])?
+            mpv.command_arg("playlist-move", [from, to])?;
         }
 
         Some(("play-next", play_next_matches)) => {
             let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize;
             let id = *play_next_matches.get_one::<usize>("id").unwrap();
-            mpv.command_arg("playlist-move", [id, pos + 1])?
+            mpv.command_arg("playlist-move", [id, pos + 1])?;
         }
 
         Some(("position", position_matches)) => {
             let id = *position_matches.get_one::<usize>("id").unwrap();
-            mpv.set_property("playlist-pos", id)?
+            mpv.set_property("playlist-pos", id)?;
         }
 
         Some(("shuffle", _)) => mpv.command("playlist-shuffle")?,
@@ -424,7 +424,7 @@ fn main() -> Result<(), Error> {
             let json = *get_matches.get_one::<bool>("json").unwrap();
             let value = mpv.get_property(property)?;
             if json {
-                println!("{}", value)
+                println!("{}", value);
             } else {
                 println!("{}", value_to_string(&value)?);
             }
@@ -536,7 +536,7 @@ fn main() -> Result<(), Error> {
                         } else {
                             // No further format specifiers or groups
                             output += input;
-                            break
+                            break;
                         };
                         match b {
                             b'%' => state = Spec,
@@ -560,7 +560,7 @@ fn main() -> Result<(), Error> {
                             spec
                         } else {
                             // Unterminated format specifier
-                            break
+                            break;
                         };
                         if let Some(s) = eval_format(&mut mpv, &metadata, spec) {
                             if stack.is_empty() {
@@ -588,7 +588,7 @@ fn main() -> Result<(), Error> {
                             b
                         } else {
                             // Unterminated group or format specifier
-                            break
+                            break;
                         };
                         match b {
                             b'%' => *spec = !*spec,
