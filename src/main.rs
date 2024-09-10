@@ -470,7 +470,7 @@ fn main() -> Result<(), Error> {
                         }
                     }
                     "time" => {
-                        let time = mpv.get_property("playback-time").ok()?.as_f64()?;
+                        let time = mpv.get_property("time-pos").ok()?.as_f64()?;
                         Some(format_duration(time as u64))
                     }
                     "duration" => {
