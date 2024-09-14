@@ -23,10 +23,9 @@ fn watch() -> Result<(), notify::Error> {
     Ok(())
 }
 
-fn print(idle: bool, pause: &Option<String>, position: &Option<u64>, count: &Option<u64>, title: &Option<String>) {
-    match (idle, pause, position, count, title) {
-        (false, Some(p), Some(o), Some(c), Some(t)) => println!("{} #{}/{} - {}", p, o, c, t),
-        _ => (),
+fn print(idle: bool, pause: &Option<&str>, position: &Option<u64>, count: &Option<u64>, title: &Option<String>) {
+    if let (false, Some(p), Some(o), Some(c), Some(t)) = (idle, pause, position, count, title) {
+        println!("{} #{}/{} - {}", p, o, c, t);
     }
 }
 
@@ -57,57 +56,58 @@ fn main() {
     }
 
     let mut idle = false;
-    let mut pause = Option::<String>::None;
+    let mut pause = Option::<&str>::None;
     let mut position = Option::<u64>::None;
     let mut count = Option::<u64>::None;
     let mut title = Option::<String>::None;
     while let Ok(event) = mpv.listen() {
-        if event.get("event") == Some(&Value::String("property-change".to_owned())) {
-            if let Some(Value::String(ref prop)) = event.get("name") {
-                match prop.as_str() {
-                    "idle-active" => {
-                        if let Some(Value::Bool(b)) = event.get("data") {
-                            idle = *b;
-                            if idle {
-                                println!("⏹ Stopped");
-                            }
-                        }
+        if let Some(Value::String(ref e)) = event.get("event") {
+            if e != "property-change" {
+                continue;
+            }
+        } else {
+            continue;
+        }
+
+        let Some(Value::String(ref prop)) = event.get("name") else { continue; };
+        match prop.as_str() {
+            "idle-active" => {
+                if let Some(Value::Bool(b)) = event.get("data") {
+                    idle = *b;
+                    if idle {
+                        println!("⏹ Stopped");
                     }
-                    "pause" => {
-                        if let Some(Value::Bool(b)) = event.get("data") {
-                            pause = if *b {
-                                Some("⏸".to_owned())
-                            } else {
-                                Some("⏵".to_owned())
-                            };
-                            print(idle, &pause, &position, &count, &title);
-                        }
-                    }
-                    "playlist-pos-1" => {
-                        if let Some(Value::Number(ref n)) = event.get("data") {
-                            if let Some(u) = n.as_u64() {
-                                position = Some(u);
-                                print(idle, &pause, &position, &count, &title);
-                            }
-                        }
-                    }
-                    "playlist-count" => {
-                        if let Some(Value::Number(ref n)) = event.get("data") {
-                            if let Some(u) = n.as_u64() {
-                                count = Some(u);
-                                print(idle, &pause, &position, &count, &title);
-                            }
-                        }
-                    }
-                    "media-title" => {
-                        if let Some(Value::String(ref str)) = event.get("data") {
-                            title = Some(str.clone());
-                            print(idle, &pause, &position, &count, &title);
-                        }
-                    }
-                    _ => continue,
                 }
             }
+            "pause" => {
+                if let Some(Value::Bool(b)) = event.get("data") {
+                    pause = Some(if *b { "⏸" } else { "⏵" });
+                    print(idle, &pause, &position, &count, &title);
+                }
+            }
+            "playlist-pos-1" => {
+                if let Some(Value::Number(ref n)) = event.get("data") {
+                    if let Some(u) = n.as_u64() {
+                        position = Some(u);
+                        print(idle, &pause, &position, &count, &title);
+                    }
+                }
+            }
+            "playlist-count" => {
+                if let Some(Value::Number(ref n)) = event.get("data") {
+                    if let Some(u) = n.as_u64() {
+                        count = Some(u);
+                        print(idle, &pause, &position, &count, &title);
+                    }
+                }
+            }
+            "media-title" => {
+                if let Some(Value::String(ref str)) = event.get("data") {
+                    title = Some(str.clone());
+                    print(idle, &pause, &position, &count, &title);
+                }
+            }
+            _ => continue,
         }
     }
 }
