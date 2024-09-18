@@ -263,8 +263,8 @@ fn main() -> Result<(), Error> {
     let socket = matches.get_one::<String>("socket").unwrap();
     let mut mpv = match Mpv::connect(socket) {
         Ok(instance) => instance,
-        Err(e) => match matches.subcommand() {
-            Some(("add", _)) => {
+        Err(e) => {
+            if let Some(("add", _)) = matches.subcommand() {
                 Cmd::new("mpv")
                     .args([
                         "--no-terminal",
@@ -276,9 +276,10 @@ fn main() -> Result<(), Error> {
                     .expect("mpv failed to start");
                 thread::sleep(Duration::from_millis(500));
                 Mpv::connect(socket)?
+            } else {
+                return Err(e);
             }
-            _ => return Err(e),
-        },
+        }
     };
 
     match matches.subcommand() {
@@ -524,49 +525,45 @@ fn main() -> Result<(), Error> {
             loop {
                 match state {
                     Raw => {
-                        let b = if let Some(i) = input.find(['%', '[', ']']) {
-                            if stack.is_empty() {
-                                output += &input[..i];
-                            } else {
-                                *stack.last_mut().unwrap() += &input[..i];
-                            }
-                            let b = input.as_bytes()[i];
-                            input = &input[i + 1..];
-                            b
-                        } else {
+                        let Some(i) = input.find(['%', '[', ']']) else {
                             // No further format specifiers or groups
                             output += input;
                             break;
                         };
-                        match b {
+                        if let Some(last) = stack.last_mut() {
+                            *last += &input[..i];
+                        } else {
+                            output += &input[..i];
+                        }
+                        match input.as_bytes()[i] {
                             b'%' => state = Spec,
                             b'[' => stack.push(String::new()),
-                            b']' => match stack.len() {
-                                0 => output.push(']'), // XXX
-                                1 => output += stack.pop().unwrap().as_str(),
-                                _ => {
-                                    // Collapse the last two elements
-                                    let last = stack.pop().unwrap();
-                                    *stack.last_mut().unwrap() += last.as_str();
+                            b']' => {
+                                if let Some(pop) = stack.pop() {
+                                    if let Some(last) = stack.last_mut() {
+                                        // Collapse the last two elements
+                                        *last += pop.as_str();
+                                    } else {
+                                        output += pop.as_str()
+                                    }
+                                } else {
+                                    output.push(']'); // XXX
                                 }
-                            },
+                            }
                             _ => unreachable!(),
                         }
+                        input = &input[i + 1..];
                     }
                     Spec => {
-                        let spec = if let Some(i) = input.find('%') {
-                            let spec = &input[..i];
-                            input = &input[i + 1..];
-                            spec
-                        } else {
+                        let Some(i) = input.find('%') else {
                             // Unterminated format specifier
                             break;
                         };
-                        if let Some(s) = eval_format(&mut mpv, &metadata, spec) {
-                            if stack.is_empty() {
-                                output += s.as_str();
+                        if let Some(s) = eval_format(&mut mpv, &metadata, &input[..i]) {
+                            if let Some(last) = stack.last_mut() {
+                                *last += s.as_str();
                             } else {
-                                *stack.last_mut().unwrap() += s.as_str();
+                                output += s.as_str();
                             }
                             state = Raw;
                         } else if stack.is_empty() {
@@ -575,6 +572,7 @@ fn main() -> Result<(), Error> {
                             stack.pop();
                             state = Skip(0, false);
                         }
+                        input = &input[i + 1..];
                     }
                     Skip(ref mut nesting, ref mut spec) => {
                         let i = if *spec {
@@ -582,15 +580,11 @@ fn main() -> Result<(), Error> {
                         } else {
                             input.find(['%', '[', ']'])
                         };
-                        let b = if let Some(i) = i {
-                            let b = input.as_bytes()[i];
-                            input = &input[i + 1..];
-                            b
-                        } else {
+                        let Some(i) = i else {
                             // Unterminated group or format specifier
                             break;
                         };
-                        match b {
+                        match input.as_bytes()[i] {
                             b'%' => *spec = !*spec,
                             b'[' => *nesting += 1,
                             b']' => {
@@ -602,6 +596,7 @@ fn main() -> Result<(), Error> {
                             }
                             _ => unreachable!(),
                         }
+                        input = &input[i + 1..];
                     }
                 }
             }
