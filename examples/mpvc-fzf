@@ -43,6 +43,6 @@ SHELL="/bin/bash" exec fzf "${args[@]}" \
   --bind='l:reload(mpvc seek -- 20; mpvc playlist)' \
   --bind='h:reload(mpvc seek -- -20; mpvc playlist)' \
   --bind='enter:reload(mpvc position -- {n}; sleep 0.1; mpvc playlist)' \
-  --bind="/:become(set -eufo pipefail; mpvc playlist >/dev/null; exec fzf ${search_args[*]} ${user_args[*]} --query={q})" \
+  --bind="/:become(mpvc playlist >/dev/null && exec fzf ${search_args[*]} ${user_args[*]} --query={q})" \
   --header="mpvc-fzf help: Enter:play /:search r:reload p:toggle x:remove <:prev >:next l:seek h:rewind f:jump" \
   "$@"
