@@ -265,6 +265,7 @@ fn main() -> Result<(), Error> {
         Ok(instance) => instance,
         Err(e) => {
             if let Some(("add", _)) = matches.subcommand() {
+                #[allow(clippy::zombie_processes)]
                 Cmd::new("mpv")
                     .args([
                         "--no-terminal",
