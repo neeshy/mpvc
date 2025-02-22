@@ -1,9 +1,9 @@
 use std::fs;
-use std::os::unix::fs::FileTypeExt;
+use std::os::unix::fs::FileTypeExt as _;
 use std::path::{Path, PathBuf};
 use std::sync;
 
-use notify::{RecursiveMode, Watcher, event::{CreateKind, Event, EventKind}};
+use notify::{RecursiveMode, Watcher as _, event::{CreateKind, Event, EventKind}};
 use serde_json::Value;
 
 use mpvc::Mpv;
@@ -14,7 +14,7 @@ fn watch() -> Result<(), notify::Error> {
     watcher.watch(Path::new("/tmp"), RecursiveMode::NonRecursive)?;
     let path = PathBuf::from("/tmp/mpv.sock");
     for event in rx {
-        if let Ok(Event { kind: EventKind::Create(CreateKind::File), paths, attrs: _ }) = event {
+        if let Ok(Event { kind: EventKind::Create(CreateKind::File), paths, .. }) = event {
             if paths.contains(&path) {
                 break;
             }
@@ -23,9 +23,9 @@ fn watch() -> Result<(), notify::Error> {
     Ok(())
 }
 
-fn print(idle: bool, pause: &Option<&str>, position: &Option<u64>, count: &Option<u64>, title: &Option<String>) {
+fn print(idle: bool, pause: Option<&str>, position: Option<u64>, count: Option<u64>, title: Option<&str>) {
     if let (false, Some(p), Some(o), Some(c), Some(t)) = (idle, pause, position, count, title) {
-        println!("{} #{}/{} - {}", p, o, c, t);
+        println!("{p} #{o}/{c} - {t}");
     }
 }
 
@@ -39,18 +39,18 @@ fn main() {
                     let _ = fs::remove_file("/tmp/mpv.sock");
                 }
             } else {
-                println!("");
+                println!();
                 let _ = watch();
             }
         } else {
-            println!("");
+            println!();
             let _ = watch();
         }
     };
 
     let properties = ["idle-active", "pause", "playlist-pos-1", "playlist-count", "media-title"];
     for (i, property) in properties.into_iter().enumerate() {
-        if let Err(_) = mpv.observe_property(i as isize + 1, property) {
+        if mpv.observe_property(i as isize + 1, property).is_err() {
             return;
         }
     }
@@ -82,14 +82,14 @@ fn main() {
             "pause" => {
                 if let Some(Value::Bool(b)) = event.get("data") {
                     pause = Some(if *b { "⏸" } else { "⏵" });
-                    print(idle, &pause, &position, &count, &title);
+                    print(idle, pause, position, count, title.as_deref());
                 }
             }
             "playlist-pos-1" => {
                 if let Some(Value::Number(n)) = event.get("data") {
                     if let Some(u) = n.as_u64() {
                         position = Some(u);
-                        print(idle, &pause, &position, &count, &title);
+                        print(idle, pause, position, count, title.as_deref());
                     }
                 }
             }
@@ -97,14 +97,14 @@ fn main() {
                 if let Some(Value::Number(n)) = event.get("data") {
                     if let Some(u) = n.as_u64() {
                         count = Some(u);
-                        print(idle, &pause, &position, &count, &title);
+                        print(idle, pause, position, count, title.as_deref());
                     }
                 }
             }
             "media-title" => {
                 if let Some(Value::String(str)) = event.get("data") {
                     title = Some(str.clone());
-                    print(idle, &pause, &position, &count, &title);
+                    print(idle, pause, position, count, title.as_deref());
                 }
             }
             _ => continue,

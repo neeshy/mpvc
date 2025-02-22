@@ -1,22 +1,21 @@
+use core::time::Duration;
 use std::io;
 use std::process::Command as Cmd;
 use std::thread;
-use std::time::Duration;
 
 use mpvc::{Error, Mpv};
 
 use clap::{Arg, ArgAction, Command, ValueHint, builder::EnumValueParser};
 use clap_complete::Shell;
-use colored::Colorize;
+use colored::Colorize as _;
 use serde_json::{Map, Value};
 
 fn value_to_string(v: &Value) -> Result<String, Error> {
-    match v {
-        Value::Bool(b) => Ok(b.to_string()),
-        Value::Number(n) => Ok(n.to_string()),
-        Value::String(s) => Ok(s.to_owned()),
-        Value::Array(_) => Ok(v.to_string()),
-        Value::Object(_) => Ok(v.to_string()),
+    match *v {
+        Value::Bool(ref b) => Ok(b.to_string()),
+        Value::Number(ref n) => Ok(n.to_string()),
+        Value::String(ref s) => Ok(s.to_owned()),
+        Value::Array(_) | Value::Object(_) => Ok(v.to_string()),
         Value::Null => Err(Error::MissingValue),
     }
 }
@@ -94,26 +93,26 @@ fn main() -> Result<(), Error> {
                    If the entry is currently playing, playback will stop.")
             .visible_alias("rm")
             .arg(Arg::new("id")
-                .value_parser(str::parse::<usize>)))
+                .value_parser(str::parse::<u64>)))
         .subcommand(Command::new("move")
             .about("Move the given playlist entry to a new position")
             .visible_alias("mv")
             .arg(Arg::new("from")
-                .value_parser(str::parse::<usize>)
+                .value_parser(str::parse::<u64>)
                 .required(true))
             .arg(Arg::new("to")
-                .value_parser(str::parse::<usize>)
+                .value_parser(str::parse::<u64>)
                 .required(true)))
         .subcommand(Command::new("play-next")
             .about("Move the given playlist entry to be after the currently playing file")
             .arg(Arg::new("id")
-                .value_parser(str::parse::<usize>)
+                .value_parser(str::parse::<u64>)
                 .required(true)))
         .subcommand(Command::new("position")
             .about("Play the given entry in the playlist")
             .visible_alias("pos")
             .arg(Arg::new("id")
-                .value_parser(str::parse::<usize>)
+                .value_parser(str::parse::<u64>)
                 .required(true)))
         .subcommand(Command::new("shuffle")
             .about("Shuffle the playlist")
@@ -265,7 +264,7 @@ fn main() -> Result<(), Error> {
         Ok(instance) => instance,
         Err(e) => {
             if let Some(("add", _)) = matches.subcommand() {
-                #[allow(clippy::zombie_processes)]
+                #[expect(clippy::zombie_processes)]
                 Cmd::new("mpv")
                     .args([
                         "--no-terminal",
@@ -321,11 +320,11 @@ fn main() -> Result<(), Error> {
                 } else {
                     return Err(Error::MissingValue);
                 }.as_str().ok_or(Error::UnexpectedValue)?;
-                let mut output = format!("{}\t{}", i + 1, title);
+                let mut output = format!("{}\t{title}", i + 1);
                 if entry.contains_key("current") {
                     output = output.reversed().to_string();
                 }
-                println!("{}", output);
+                println!("{output}");
             }
         }
 
@@ -333,35 +332,31 @@ fn main() -> Result<(), Error> {
         Some(("clear", _)) => mpv.command("playlist-clear")?,
 
         Some(("remove", remove_matches)) => {
-            let value: Value = if let Some(id) = remove_matches.get_one::<usize>("id") {
-                (*id).into()
-            } else {
-                "current".into()
-            };
+            let value: Value = remove_matches.get_one::<u64>("id").map_or_else(|| "current".into(), |id| (*id).into());
             mpv.command_arg("playlist-remove", [value])?;
         }
 
         Some(("move", move_matches)) => {
-            let from = *move_matches.get_one::<usize>("from").unwrap();
-            let to = *move_matches.get_one::<usize>("to").unwrap();
+            let from = *move_matches.get_one::<u64>("from").unwrap();
+            let to = *move_matches.get_one::<u64>("to").unwrap();
             mpv.command_arg("playlist-move", [from, to])?;
         }
 
         Some(("play-next", play_next_matches)) => {
-            let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)? as usize;
-            let id = *play_next_matches.get_one::<usize>("id").unwrap();
+            let id = *play_next_matches.get_one::<u64>("id").unwrap();
+            let pos = mpv.get_property("playlist-pos")?.as_u64().ok_or(Error::UnexpectedValue)?;
             mpv.command_arg("playlist-move", [id, pos + 1])?;
         }
 
         Some(("position", position_matches)) => {
-            let id = *position_matches.get_one::<usize>("id").unwrap();
+            let id = *position_matches.get_one::<u64>("id").unwrap();
             mpv.set_property("playlist-pos", id)?;
         }
 
         Some(("shuffle", _)) => mpv.command("playlist-shuffle")?,
 
         Some(("reverse", _)) => {
-            let count = mpv.get_property("playlist-count")?.as_u64().ok_or(Error::UnexpectedValue)? as usize - 1;
+            let count = mpv.get_property("playlist-count")?.as_u64().ok_or(Error::UnexpectedValue)? - 1;
             for i in 0..count {
                 mpv.command_arg("playlist-move", [count, i])?;
             }
@@ -426,7 +421,7 @@ fn main() -> Result<(), Error> {
             let json = *get_matches.get_one::<bool>("json").unwrap();
             let value = mpv.get_property(property)?;
             if json {
-                println!("{}", value);
+                println!("{value}");
             } else {
                 println!("{}", value_to_string(&value)?);
             }
@@ -455,8 +450,8 @@ fn main() -> Result<(), Error> {
             fn eval_format(mpv: &mut Mpv, metadata: &Map<String, Value>, spec: &str) -> Option<String> {
                 fn format_duration(d: u64) -> String {
                     match (d % 60, (d / 60) % 60, d / 3600) {
-                        (s, m, 0) => format!("{:02}:{:02}", m, s),
-                        (s, m, h) => format!("{:02}:{:02}:{:02}", h, m, s),
+                        (s, m, 0) => format!("{m:02}:{s:02}"),
+                        (s, m, h) => format!("{h:02}:{m:02}:{s:02}"),
                     }
                 }
 
@@ -498,13 +493,20 @@ fn main() -> Result<(), Error> {
                                 Some(pair[j + 1..].to_owned())
                             }
                         } else if let Some(metadata) = metadata.get(spec) {
-                            Some(value_to_string(metadata).ok()?)
+                            value_to_string(metadata).ok()
                         } else {
                             value_to_string(&mpv.get_property(spec).ok()?).ok()
                         }
                     }
                 }
             }
+
+            enum State {
+                Raw,
+                Spec,
+                Skip(usize, bool),
+            }
+            use State::*;
 
             let mut input = format_matches.get_one::<String>("format-string").unwrap().as_str();
             let mut output = String::with_capacity(input.len());
@@ -514,13 +516,6 @@ fn main() -> Result<(), Error> {
             } else {
                 Map::<String, Value>::new()
             };
-
-            enum State {
-                Raw,
-                Spec,
-                Skip(usize, bool),
-            }
-            use State::*;
 
             let mut state = Raw;
             let mut stack = Vec::new();
@@ -547,7 +542,7 @@ fn main() -> Result<(), Error> {
                                         // Collapse the last two elements
                                         *last += pop.as_str();
                                     } else {
-                                        output += pop.as_str()
+                                        output += pop.as_str();
                                     }
                                 } else {
                                     output.push(']'); // XXX
@@ -603,31 +598,22 @@ fn main() -> Result<(), Error> {
                     }
                 }
             }
-            print!("{}", output);
+            print!("{output}");
         }
 
         Some(("observe", observe_matches)) => {
-            let properties = match observe_matches.get_many::<String>("property") {
-                Some(properties) => properties.collect(),
-                None => Vec::new(),
-            };
+            let properties = observe_matches.get_many::<String>("property").map_or_else(Vec::new, |v| v.collect());
             for (i, property) in properties.into_iter().enumerate() {
                 mpv.observe_property(i as isize + 1, property)?;
             }
             while let Ok(response) = mpv.listen_raw() {
-                println!("{}", response);
+                println!("{response}");
             }
         }
 
         Some(("wait", wait_matches)) => {
-            let events = match wait_matches.get_many::<String>("event") {
-                Some(events) => events.collect(),
-                None => Vec::new(),
-            };
-            let properties = match wait_matches.get_many::<String>("property") {
-                Some(properties) => properties.collect(),
-                None => Vec::new(),
-            };
+            let events = wait_matches.get_many::<String>("event").map_or_else(Vec::new, |v| v.collect());
+            let properties = wait_matches.get_many::<String>("property").map_or_else(Vec::new, |v| v.collect());
             for (i, property) in properties.iter().enumerate() {
                 mpv.observe_property(i as isize + 1, property)?;
             }
@@ -641,9 +627,8 @@ fn main() -> Result<(), Error> {
                             if let Some(i) = properties.iter().position(|v| v == &property) {
                                 if seen.contains(&property) {
                                     break;
-                                } else {
-                                    seen.push(properties[i]);
                                 }
+                                seen.push(properties[i]);
                             }
                         }
                     } else if events.contains(&e) {

@@ -1,8 +1,9 @@
-use std::error::Error as StdError;
-use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use std::io::{BufRead, BufReader, Error as IoError, ErrorKind as IoErrorKind, Write};
-use std::iter::once;
+use core::error::Error as StdError;
+use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
+use core::iter::once;
+use std::io::{BufRead as _, BufReader, Error as IoError, ErrorKind as IoErrorKind, Write as _};
 use std::os::unix::net::UnixStream;
+use std::net::Shutdown;
 use std::path::Path;
 
 use log::debug;
@@ -15,8 +16,8 @@ pub struct Mpv {
 }
 
 impl Debug for Mpv {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> FmtResult {
-        let mut builder = fmt.debug_struct("Mpv");
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let mut builder = f.debug_struct("Mpv");
         if let Ok(addr) = self.reader.get_ref().peer_addr() {
             if let Some(pathname) = addr.as_pathname() {
                 builder.field("path", &pathname);
@@ -44,28 +45,24 @@ pub enum Error {
 
 impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        match self {
-            Error::MpvError(_) => None,
-            Error::ConnectError(e) => Some(e),
-            Error::ReadError(e) => Some(e),
-            Error::WriteError(e) => Some(e),
-            Error::JsonError(e) => Some(e),
-            Error::UnexpectedValue => None,
-            Error::MissingValue => None,
+        match *self {
+            Self::MpvError(_) | Self::UnexpectedValue | Self::MissingValue => None,
+            Self::ConnectError(ref e) | Self::ReadError(ref e) | Self::WriteError(ref e) => Some(e),
+            Self::JsonError(ref e) => Some(e),
         }
     }
 }
 
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        match self {
-            Error::MpvError(e) => write!(f, "MpvError: {}", e),
-            Error::ConnectError(e) => write!(f, "ConnectError: {}", e),
-            Error::ReadError(e) => write!(f, "ReadError: {}", e),
-            Error::WriteError(e) => write!(f, "WriteError: {}", e),
-            Error::JsonError(e) => write!(f, "JsonError: {}", e),
-            Error::UnexpectedValue => write!(f, "Unexpected value received"),
-            Error::MissingValue => write!(f, "Missing value"),
+        match *self {
+            Self::MpvError(ref e) => write!(f, "MpvError: {e}"),
+            Self::ConnectError(ref e) => write!(f, "ConnectError: {e}"),
+            Self::ReadError(ref e) => write!(f, "ReadError: {e}"),
+            Self::WriteError(ref e) => write!(f, "WriteError: {e}"),
+            Self::JsonError(ref e) => write!(f, "JsonError: {e}"),
+            Self::UnexpectedValue => write!(f, "Unexpected value received"),
+            Self::MissingValue => write!(f, "Missing value"),
         }
     }
 }
@@ -78,9 +75,9 @@ impl Debug for Error {
 
 impl Mpv {
     /// Connect to the mpv socket located at the given path.
-    pub fn connect<P: AsRef<Path>>(path: P) -> Result<Mpv, Error> {
+    pub fn connect<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         match UnixStream::connect(path) {
-            Ok(sock) => Ok(Mpv {
+            Ok(sock) => Ok(Self {
                 reader: BufReader::new(sock),
                 responses: Vec::new(),
                 counter: -1,
@@ -90,7 +87,7 @@ impl Mpv {
     }
 
     fn _disconnect(&self) {
-        self.reader.get_ref().shutdown(std::net::Shutdown::Both).expect("socket disconnect");
+        self.reader.get_ref().shutdown(Shutdown::Both).expect("socket disconnect");
     }
 
     /// Close the mpv socket.
@@ -164,7 +161,7 @@ impl Mpv {
     pub fn command_arg<I: IntoIterator>(&mut self, command: &str, args: I) -> Result<(), Error>
     where I::Item: Into<Value> {
         // XXX: Drop return value for now, change interface later if needed
-        self._command(once(command.into()).chain(args.into_iter().map(|v| v.into()))).map(|_| ())
+        self._command(once(command.into()).chain(args.into_iter().map(Into::into))).map(|_| ())
     }
 
     /// Run an mpv command without any arguments.
@@ -174,7 +171,7 @@ impl Mpv {
     /// mpv.command("playlist-shuffle")?;
     /// ```
     pub fn command(&mut self, command: &str) -> Result<(), Error> {
-        self._command([command.into()].into_iter()).map(|_| ())
+        self._command(once(command.into())).map(|_| ())
     }
 
     /// Retrieve a property from mpv.
@@ -219,12 +216,12 @@ impl Mpv {
             Number::from_f64(value).ok_or(Error::UnexpectedValue)?.into()].into_iter()).map(|_| ())
     }
 
-    /// Watch a property for changes. Runs the 'observe_property' mpv command.
+    /// Watch a property for changes. Runs the `observe_property` mpv command.
     pub fn observe_property(&mut self, id: isize, property: &str) -> Result<(), Error> {
         self._command(["observe_property".into(), id.into(), property.into()].into_iter()).map(|_| ())
     }
 
-    /// Undo the corresponding 'observe_property'. Runs the 'unobserve_property' mpv command.
+    /// Undo the corresponding `observe_property`. Runs the `unobserve_property` mpv command.
     pub fn unobserve_property(&mut self, id: isize) -> Result<(), Error> {
         self._command(["unobserve_property".into(), id.into()].into_iter()).map(|_| ())
     }
