@@ -13,8 +13,8 @@ use serde_json::{Map, Value};
 fn value_to_string(v: &Value) -> Result<String, Error> {
     match v {
         Value::Bool(b) => Ok(b.to_string()),
-        Value::Number(ref n) => Ok(n.to_string()),
-        Value::String(ref s) => Ok(s.to_owned()),
+        Value::Number(n) => Ok(n.to_string()),
+        Value::String(s) => Ok(s.to_owned()),
         Value::Array(_) => Ok(v.to_string()),
         Value::Object(_) => Ok(v.to_string()),
         Value::Null => Err(Error::MissingValue),
@@ -633,9 +633,9 @@ fn main() -> Result<(), Error> {
             let mut seen = Vec::new();
             loop {
                 let event = mpv.listen()?;
-                if let Some(Value::String(ref e)) = event.get("event") {
+                if let Some(Value::String(e)) = event.get("event") {
                     if e == "property-change" {
-                        if let Some(Value::String(ref property)) = event.get("name") {
+                        if let Some(Value::String(property)) = event.get("name") {
                             if let Some(i) = properties.iter().position(|v| v == &property) {
                                 if seen.contains(&property) {
                                     break;

@@ -61,7 +61,7 @@ fn main() {
     let mut count = Option::<u64>::None;
     let mut title = Option::<String>::None;
     while let Ok(event) = mpv.listen() {
-        if let Some(Value::String(ref e)) = event.get("event") {
+        if let Some(Value::String(e)) = event.get("event") {
             if e != "property-change" {
                 continue;
             }
@@ -69,7 +69,7 @@ fn main() {
             continue;
         }
 
-        let Some(Value::String(ref prop)) = event.get("name") else { continue; };
+        let Some(Value::String(prop)) = event.get("name") else { continue; };
         match prop.as_str() {
             "idle-active" => {
                 if let Some(Value::Bool(b)) = event.get("data") {
@@ -86,7 +86,7 @@ fn main() {
                 }
             }
             "playlist-pos-1" => {
-                if let Some(Value::Number(ref n)) = event.get("data") {
+                if let Some(Value::Number(n)) = event.get("data") {
                     if let Some(u) = n.as_u64() {
                         position = Some(u);
                         print(idle, &pause, &position, &count, &title);
@@ -94,7 +94,7 @@ fn main() {
                 }
             }
             "playlist-count" => {
-                if let Some(Value::Number(ref n)) = event.get("data") {
+                if let Some(Value::Number(n)) = event.get("data") {
                     if let Some(u) = n.as_u64() {
                         count = Some(u);
                         print(idle, &pause, &position, &count, &title);
@@ -102,7 +102,7 @@ fn main() {
                 }
             }
             "media-title" => {
-                if let Some(Value::String(ref str)) = event.get("data") {
+                if let Some(Value::String(str)) = event.get("data") {
                     title = Some(str.clone());
                     print(idle, &pause, &position, &count, &title);
                 }

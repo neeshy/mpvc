@@ -46,10 +46,10 @@ impl StdError for Error {
     fn source(&self) -> Option<&(dyn StdError + 'static)> {
         match self {
             Error::MpvError(_) => None,
-            Error::ConnectError(ref e) => Some(e),
-            Error::ReadError(ref e) => Some(e),
-            Error::WriteError(ref e) => Some(e),
-            Error::JsonError(ref e) => Some(e),
+            Error::ConnectError(e) => Some(e),
+            Error::ReadError(e) => Some(e),
+            Error::WriteError(e) => Some(e),
+            Error::JsonError(e) => Some(e),
             Error::UnexpectedValue => None,
             Error::MissingValue => None,
         }
@@ -59,11 +59,11 @@ impl StdError for Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            Error::MpvError(ref e) => write!(f, "MpvError: {}", e),
-            Error::ConnectError(ref e) => write!(f, "ConnectError: {}", e),
-            Error::ReadError(ref e) => write!(f, "ReadError: {}", e),
-            Error::WriteError(ref e) => write!(f, "WriteError: {}", e),
-            Error::JsonError(ref e) => write!(f, "JsonError: {}", e),
+            Error::MpvError(e) => write!(f, "MpvError: {}", e),
+            Error::ConnectError(e) => write!(f, "ConnectError: {}", e),
+            Error::ReadError(e) => write!(f, "ReadError: {}", e),
+            Error::WriteError(e) => write!(f, "WriteError: {}", e),
+            Error::JsonError(e) => write!(f, "JsonError: {}", e),
             Error::UnexpectedValue => write!(f, "Unexpected value received"),
             Error::MissingValue => write!(f, "Missing value"),
         }
@@ -125,7 +125,7 @@ impl Mpv {
                 Err(Error::UnexpectedValue)
             }?;
 
-            if let Some(Value::Number(ref request_id)) = map.get("request_id") {
+            if let Some(Value::Number(request_id)) = map.get("request_id") {
                 if request_id.as_i64() != Some(self.counter) {
                     continue;
                 }
@@ -136,7 +136,7 @@ impl Mpv {
                 continue;
             }
 
-            let error = if let Some(Value::String(ref error)) = map.get("error") {
+            let error = if let Some(Value::String(error)) = map.get("error") {
                 Ok(error)
             } else {
                 Err(Error::UnexpectedValue)
