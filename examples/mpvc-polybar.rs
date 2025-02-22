@@ -3,7 +3,7 @@ use std::os::unix::fs::FileTypeExt;
 use std::path::{Path, PathBuf};
 use std::sync;
 
-use notify::{event::{CreateKind, Event, EventKind}, RecursiveMode, Watcher};
+use notify::{RecursiveMode, Watcher, event::{CreateKind, Event, EventKind}};
 use serde_json::Value;
 
 use mpvc::Mpv;

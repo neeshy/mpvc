@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use mpvc::{Error, Mpv};
 
-use clap::{builder::EnumValueParser, Arg, ArgAction, Command, ValueHint};
+use clap::{Arg, ArgAction, Command, ValueHint, builder::EnumValueParser};
 use clap_complete::Shell;
 use colored::Colorize;
 use serde_json::{Map, Value};
@@ -508,10 +508,12 @@ fn main() -> Result<(), Error> {
 
             let mut input = format_matches.get_one::<String>("format-string").unwrap().as_str();
             let mut output = String::with_capacity(input.len());
-            let metadata = mpv.get_property("metadata")
-                .unwrap_or_else(|_| Value::Object(Map::<String, Value>::new()))
-                .as_object().ok_or(Error::UnexpectedValue)?
-                .iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect();
+            let metadata = if let Ok(metadata) = mpv.get_property("metadata") {
+                metadata.as_object().ok_or(Error::UnexpectedValue)?
+                    .iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect()
+            } else {
+                Map::<String, Value>::new()
+            };
 
             enum State {
                 Raw,
