@@ -137,6 +137,7 @@ _mpvc() {
 }
 
 _mpvc__playlist() {
+    whence jq &>/dev/null || return
     mpvc get idle-active &>/dev/null || return
     local -a playlist=("${(@0)$(mpvc get playlist | jq --raw-output0 'to_entries | .[] | (.key | tostring) + ":" + .value.filename')}")
     shift -p playlist
@@ -144,6 +145,7 @@ _mpvc__playlist() {
 }
 
 _mpvc__property() {
+    whence jq &>/dev/null || return
     mpvc get idle-active &>/dev/null || return
     local -a properties=("${(@0)$(mpvc get property-list | jq --raw-output0 '.[]')}")
     shift -p properties
@@ -151,6 +153,7 @@ _mpvc__property() {
 }
 
 _mpvc__command() {
+    whence jq &>/dev/null || return
     mpvc get idle-active &>/dev/null || return
     local -a commands=("${(@0)$(mpvc get command-list | jq --raw-output0 '.[] | .name')}")
     shift -p commands
@@ -158,6 +161,7 @@ _mpvc__command() {
 }
 
 _mpvc__metadata() {
+    whence jq &>/dev/null || return
     mpvc get idle-active &>/dev/null || return
     local -a metadata=("${(@0)$(mpvc get metadata | jq --raw-output0 'keys | .[]')}")
     shift -p metadata
