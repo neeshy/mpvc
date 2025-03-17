@@ -136,34 +136,30 @@ _mpvc() {
     esac;; esac
 }
 
-_mpvc__playlist() {
+_mpvc__describe() {
     whence jq &>/dev/null || return
     mpvc get idle-active &>/dev/null || return
-    local -a playlist=("${(@0)$(mpvc get playlist | jq --raw-output0 'to_entries | .[] | (.key | tostring) + ":" + .value.filename')}")
-    shift -p playlist
-    _describe -V playlist playlist "$@"
+    local name="$1"
+    local property="$2"
+    local filter="$3"
+    shift 3
+    local -a completions=("${(@0)$(mpvc get -- "$property" | jq --raw-output0 -- "$filter")}")
+    shift -p completions
+    _describe -V completions "$name" "$@"
+}
+
+_mpvc__playlist() {
+    _mpvc__describe playlist playlist 'to_entries | .[] | (.key | tostring) + ":" + .value.filename' "$@"
 }
 
 _mpvc__property() {
-    whence jq &>/dev/null || return
-    mpvc get idle-active &>/dev/null || return
-    local -a properties=("${(@0)$(mpvc get property-list | jq --raw-output0 '.[]')}")
-    shift -p properties
-    _describe -V property properties "$@"
+    _mpvc__describe property property-list '.[]' "$@"
 }
 
 _mpvc__command() {
-    whence jq &>/dev/null || return
-    mpvc get idle-active &>/dev/null || return
-    local -a commands=("${(@0)$(mpvc get command-list | jq --raw-output0 '.[] | .name')}")
-    shift -p commands
-    _describe -V command commands "$@"
+    _mpvc__describe command command-list '.[] | .name' "$@"
 }
 
 _mpvc__metadata() {
-    whence jq &>/dev/null || return
-    mpvc get idle-active &>/dev/null || return
-    local -a metadata=("${(@0)$(mpvc get metadata | jq --raw-output0 'keys | .[]')}")
-    shift -p metadata
-    _describe -V metadata metadata "$@"
+    _mpvc__describe metadata metadata 'keys | .[]' "$@"
 }
