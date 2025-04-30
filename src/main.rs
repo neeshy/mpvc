@@ -350,7 +350,7 @@ fn main() -> Result<(), Error> {
 
         Some(("position", position_matches)) => {
             let id = *position_matches.get_one::<u64>("id").unwrap();
-            mpv.set_property("playlist-pos", id)?;
+            mpv.command_arg("playlist-play-index", [id])?;
         }
 
         Some(("shuffle", _)) => mpv.command("playlist-shuffle")?,
