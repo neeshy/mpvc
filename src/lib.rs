@@ -18,10 +18,8 @@ pub struct Mpv {
 impl Debug for Mpv {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         let mut builder = f.debug_struct("Mpv");
-        if let Ok(addr) = self.reader.get_ref().peer_addr() {
-            if let Some(pathname) = addr.as_pathname() {
-                builder.field("path", &pathname);
-            }
+        if let Ok(addr) = self.reader.get_ref().peer_addr() && let Some(pathname) = addr.as_pathname() {
+            builder.field("path", &pathname);
         }
         builder.finish()
     }

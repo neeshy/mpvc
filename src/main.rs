@@ -622,15 +622,13 @@ fn main() -> Result<(), Error> {
             loop {
                 let event = mpv.listen()?;
                 if let Some(Value::String(e)) = event.get("event") {
-                    if e == "property-change" {
-                        if let Some(Value::String(property)) = event.get("name") {
-                            if let Some(i) = properties.iter().position(|v| v == &property) {
-                                if seen.contains(&property) {
-                                    break;
-                                }
-                                seen.push(properties[i]);
-                            }
+                    if e == "property-change"
+                            && let Some(Value::String(property)) = event.get("name")
+                            && let Some(i) = properties.iter().position(|v| v == &property) {
+                        if seen.contains(&property) {
+                            break;
                         }
+                        seen.push(properties[i]);
                     } else if events.contains(&e) {
                         break;
                     }

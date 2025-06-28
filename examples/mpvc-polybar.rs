@@ -14,10 +14,8 @@ fn watch() -> Result<(), notify::Error> {
     watcher.watch(Path::new("/tmp"), RecursiveMode::NonRecursive)?;
     let path = PathBuf::from("/tmp/mpv.sock");
     for event in rx {
-        if let Ok(Event { kind: EventKind::Create(CreateKind::File), paths, .. }) = event {
-            if paths.contains(&path) {
-                break;
-            }
+        if let Ok(Event { kind: EventKind::Create(CreateKind::File), paths, .. }) = event && paths.contains(&path) {
+            break;
         }
     }
     Ok(())
@@ -31,16 +29,11 @@ fn print(idle: bool, pause: Option<&str>, position: Option<u64>, count: Option<u
 
 fn main() {
     let mut mpv = loop {
-        if let Ok(metadata) = fs::metadata("/tmp/mpv.sock") {
-            if metadata.file_type().is_socket() {
-                if let Ok(instance) = Mpv::connect("/tmp/mpv.sock") {
-                    break instance;
-                } else {
-                    let _ = fs::remove_file("/tmp/mpv.sock");
-                }
+        if let Ok(metadata) = fs::metadata("/tmp/mpv.sock") && metadata.file_type().is_socket() {
+            if let Ok(instance) = Mpv::connect("/tmp/mpv.sock") {
+                break instance;
             } else {
-                println!();
-                let _ = watch();
+                let _ = fs::remove_file("/tmp/mpv.sock");
             }
         } else {
             println!();
@@ -61,10 +54,7 @@ fn main() {
     let mut count = Option::<u64>::None;
     let mut title = Option::<String>::None;
     while let Ok(event) = mpv.listen() {
-        if let Some(Value::String(e)) = event.get("event") {
-            if e != "property-change" {
-                continue;
-            }
+        if let Some(Value::String(e)) = event.get("event") && e == "property-change" {
         } else {
             continue;
         }
@@ -86,19 +76,15 @@ fn main() {
                 }
             }
             "playlist-pos-1" => {
-                if let Some(Value::Number(n)) = event.get("data") {
-                    if let Some(u) = n.as_u64() {
-                        position = Some(u);
-                        print(idle, pause, position, count, title.as_deref());
-                    }
+                if let Some(Value::Number(n)) = event.get("data") && let Some(u) = n.as_u64() {
+                    position = Some(u);
+                    print(idle, pause, position, count, title.as_deref());
                 }
             }
             "playlist-count" => {
-                if let Some(Value::Number(n)) = event.get("data") {
-                    if let Some(u) = n.as_u64() {
-                        count = Some(u);
-                        print(idle, pause, position, count, title.as_deref());
-                    }
+                if let Some(Value::Number(n)) = event.get("data") && let Some(u) = n.as_u64() {
+                    count = Some(u);
+                    print(idle, pause, position, count, title.as_deref());
                 }
             }
             "media-title" => {
