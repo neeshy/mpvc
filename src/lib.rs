@@ -107,7 +107,7 @@ impl Mpv {
             let mut response = String::new();
             let n = self.reader.read_line(&mut response).map_err(Error::ReadError)?;
             if n == 0 {
-                return Err(Error::ReadError(IoError::from(IoErrorKind::UnexpectedEof)));
+                return Err(Error::ReadError(IoErrorKind::UnexpectedEof.into()));
             }
             let response = response.trim_end();
             debug!("Response: {}", response);
@@ -267,7 +267,7 @@ impl Mpv {
         let mut response = String::new();
         let n = self.reader.read_line(&mut response).map_err(Error::ReadError)?;
         if n == 0 {
-            return Err(Error::ReadError(IoError::from(IoErrorKind::UnexpectedEof)));
+            return Err(Error::ReadError(IoErrorKind::UnexpectedEof.into()));
         }
         Ok(response.trim_end().to_owned())
     }

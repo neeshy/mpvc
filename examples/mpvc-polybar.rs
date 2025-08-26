@@ -76,14 +76,14 @@ fn main() {
                 }
             }
             "playlist-pos-1" => {
-                if let Some(Value::Number(n)) = event.get("data") && let Some(u) = n.as_u64() {
-                    position = Some(u);
+                if let Some(Value::Number(n)) = event.get("data") && let u @ Some(_) = n.as_u64() {
+                    position = u;
                     print(idle, pause, position, count, title.as_deref());
                 }
             }
             "playlist-count" => {
-                if let Some(Value::Number(n)) = event.get("data") && let Some(u) = n.as_u64() {
-                    count = Some(u);
+                if let Some(Value::Number(n)) = event.get("data") && let u @ Some(_) = n.as_u64() {
+                    count = u;
                     print(idle, pause, position, count, title.as_deref());
                 }
             }
