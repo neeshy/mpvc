@@ -1,6 +1,6 @@
 [package]
 name = "mpvc"
-version = "1.4.7"
+version = "1.4.9"
 authors = ["neeshy <neeshy@tfwno.gf>", "Jonas Frei <freijon@pm.me>"]
 description = "An mpc-like CLI tool for mpv"
 homepage = "https://github.com/neeshy/mpvc"
@@ -9,13 +9,13 @@ license = "GPL-3.0-only"
 edition = "2024"
 
 [dependencies]
-clap = "4.5.40"
-clap_complete = "4.5.54"
+clap = "4.5.49"
+clap_complete = "4.5.59"
 colored = "3.0.0"
-log = "0.4.27"
-serde = "1.0.219"
-serde_json = "1.0.140"
+log = "0.4.28"
+serde = "1.0.228"
+serde_json = "1.0.145"
 
 [dev-dependencies]
 env_logger = "0.11.8"
-notify = "8.0.0"
+notify = "8.2.0"
