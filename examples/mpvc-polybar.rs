@@ -61,37 +61,27 @@ fn main() {
 
         let Some(Value::String(prop)) = event.get("name") else { continue; };
         match prop.as_str() {
-            "idle-active" => {
-                if let Some(Value::Bool(b)) = event.get("data") {
-                    idle = *b;
-                    if idle {
-                        println!("⏹ Stopped");
-                    }
+            "idle-active" if let Some(Value::Bool(b)) = event.get("data") => {
+                idle = *b;
+                if idle {
+                    println!("⏹ Stopped");
                 }
             }
-            "pause" => {
-                if let Some(Value::Bool(b)) = event.get("data") {
-                    pause = Some(if *b { "⏸" } else { "⏵" });
-                    print(idle, pause, position, count, title.as_deref());
-                }
+            "pause" if let Some(Value::Bool(b)) = event.get("data") => {
+                pause = Some(if *b { "⏸" } else { "⏵" });
+                print(idle, pause, position, count, title.as_deref());
             }
-            "playlist-pos-1" => {
-                if let Some(Value::Number(n)) = event.get("data") && let u @ Some(_) = n.as_u64() {
-                    position = u;
-                    print(idle, pause, position, count, title.as_deref());
-                }
+            "playlist-pos-1" if let Some(Value::Number(n)) = event.get("data") && let u @ Some(_) = n.as_u64() => {
+                position = u;
+                print(idle, pause, position, count, title.as_deref());
             }
-            "playlist-count" => {
-                if let Some(Value::Number(n)) = event.get("data") && let u @ Some(_) = n.as_u64() {
-                    count = u;
-                    print(idle, pause, position, count, title.as_deref());
-                }
+            "playlist-count" if let Some(Value::Number(n)) = event.get("data") && let u @ Some(_) = n.as_u64() => {
+                count = u;
+                print(idle, pause, position, count, title.as_deref());
             }
-            "media-title" => {
-                if let Some(Value::String(str)) = event.get("data") {
-                    title = Some(str.clone());
-                    print(idle, pause, position, count, title.as_deref());
-                }
+            "media-title" if let Some(Value::String(str)) = event.get("data") => {
+                title = Some(str.clone());
+                print(idle, pause, position, count, title.as_deref());
             }
             _ => continue,
         }

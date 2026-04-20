@@ -466,38 +466,22 @@ fn main() -> Result<(), Error> {
                             Some(mpv.get_property("media-title").ok()?.as_str()?.to_owned())
                         }
                     }
-                    "time" => {
-                        let time = mpv.get_property("time-pos").ok()?.as_f64()?;
-                        Some(format_duration(time as u64))
-                    }
-                    "duration" => {
-                        let duration = mpv.get_property("duration").ok()?.as_f64()?;
-                        Some(format_duration(duration as u64))
-                    }
-                    "percentage" => {
-                        let percent = mpv.get_property("percent-pos").ok()?.as_f64()?;
-                        Some((percent as u64).to_string())
-                    }
-                    "position" => {
-                        let position = mpv.get_property("playlist-pos-1").ok()?.as_u64()?;
-                        Some(position.to_string())
-                    }
-                    _ => {
-                        if let Some(i) = spec.find('?') {
-                            let property = &spec[..i];
-                            let pair = &spec[i + 1..];
-                            let j = pair.find(':')?;
-                            if mpv.get_property(property).ok()?.as_bool()? {
-                                Some(pair[..j].to_owned())
-                            } else {
-                                Some(pair[j + 1..].to_owned())
-                            }
-                        } else if let Some(metadata) = metadata.get(spec) {
-                            value_to_string(metadata).ok()
+                    "time" => Some(format_duration(mpv.get_property("time-pos").ok()?.as_f64()? as u64)),
+                    "duration" => Some(format_duration(mpv.get_property("duration").ok()?.as_f64()? as u64)),
+                    "percentage" => Some((mpv.get_property("percent-pos").ok()?.as_f64()? as u64).to_string()),
+                    "position" => Some(mpv.get_property("playlist-pos-1").ok()?.as_u64()?.to_string()),
+                    _ if let Some(i) = spec.find('?') => {
+                        let property = &spec[..i];
+                        let pair = &spec[i + 1..];
+                        let j = pair.find(':')?;
+                        if mpv.get_property(property).ok()?.as_bool()? {
+                            Some(pair[..j].to_owned())
                         } else {
-                            value_to_string(&mpv.get_property(spec).ok()?).ok()
+                            Some(pair[j + 1..].to_owned())
                         }
                     }
+                    _ if let Some(metadata) = metadata.get(spec) => value_to_string(metadata).ok(),
+                    _ => value_to_string(&mpv.get_property(spec).ok()?).ok(),
                 }
             }
 
