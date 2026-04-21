@@ -32,9 +32,8 @@ fn main() {
         if let Ok(metadata) = fs::metadata("/tmp/mpv.sock") && metadata.file_type().is_socket() {
             if let Ok(instance) = Mpv::connect("/tmp/mpv.sock") {
                 break instance;
-            } else {
-                let _ = fs::remove_file("/tmp/mpv.sock");
             }
+            let _ = fs::remove_file("/tmp/mpv.sock");
         } else {
             println!();
             let _ = watch();
@@ -83,7 +82,7 @@ fn main() {
                 title = Some(str.clone());
                 print(idle, pause, position, count, title.as_deref());
             }
-            _ => continue,
+            _ => (),
         }
     }
 }

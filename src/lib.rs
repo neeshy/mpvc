@@ -85,7 +85,7 @@ impl Mpv {
             map.insert("request_id".to_owned(), self.counter.into());
             map
         }).to_string();
-        debug!("Command: {}", command);
+        debug!("Command: {command}");
         self.reader.get_ref().write_all((command + "\n").as_bytes()).map_err(Error::WriteError)?;
         loop {
             let mut response = String::new();
@@ -94,7 +94,7 @@ impl Mpv {
                 return Err(Error::ReadError(IoErrorKind::UnexpectedEof.into()));
             }
             let response = response.trim_end();
-            debug!("Response: {}", response);
+            debug!("Response: {response}");
 
             let response = response.parse::<Value>().map_err(Error::JsonError)?;
 
@@ -223,16 +223,15 @@ impl Mpv {
         }
         loop {
             let response = self.listen_raw()?;
-            debug!("Event: {}", response);
+            debug!("Event: {response}");
 
             let event = response.parse::<Value>().map_err(Error::JsonError)?;
 
             if let Value::Object(map) = event {
                 if let Some(Value::String(_)) = map.get("event") {
                     return Ok(map);
-                } else {
-                    debug!("Bad response: {:?}", response);
                 }
+                debug!("Bad response: {response:?}");
             } else {
                 return Err(Error::UnexpectedValue);
             }

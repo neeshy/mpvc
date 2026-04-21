@@ -1,3 +1,4 @@
+use core::iter::Iterator;
 use core::time::Duration;
 use std::io;
 use std::process::Command as Cmd;
@@ -586,7 +587,7 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("observe", observe_matches)) => {
-            let properties = observe_matches.get_many::<String>("property").map_or_else(Vec::new, |v| v.collect());
+            let properties = observe_matches.get_many::<String>("property").map_or_else(Vec::new, Iterator::collect);
             for (i, property) in properties.into_iter().enumerate() {
                 mpv.observe_property(i as isize + 1, property)?;
             }
@@ -596,8 +597,8 @@ fn main() -> Result<(), Error> {
         }
 
         Some(("wait", wait_matches)) => {
-            let events = wait_matches.get_many::<String>("event").map_or_else(Vec::new, |v| v.collect());
-            let properties = wait_matches.get_many::<String>("property").map_or_else(Vec::new, |v| v.collect());
+            let events = wait_matches.get_many::<String>("event").map_or_else(Vec::new, Iterator::collect);
+            let properties = wait_matches.get_many::<String>("property").map_or_else(Vec::new, Iterator::collect);
             for (i, property) in properties.iter().enumerate() {
                 mpv.observe_property(i as isize + 1, property)?;
             }
