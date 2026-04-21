@@ -623,7 +623,5 @@ fn main() -> Result<(), Error> {
         _ => unreachable!(),
     }
 
-    mpv.disconnect();
-
     Ok(())
 }

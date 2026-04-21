@@ -3,7 +3,6 @@ use core::fmt::{Debug, Display, Formatter, Result as FmtResult};
 use core::iter::once;
 use std::io::{BufRead as _, BufReader, Error as IoError, ErrorKind as IoErrorKind, Write as _};
 use std::os::unix::net::UnixStream;
-use std::net::Shutdown;
 use std::path::Path;
 
 use log::debug;
@@ -22,12 +21,6 @@ impl Debug for Mpv {
             builder.field("path", &pathname);
         }
         builder.finish()
-    }
-}
-
-impl Drop for Mpv {
-    fn drop(&mut self) {
-        self._disconnect();
     }
 }
 
@@ -82,15 +75,6 @@ impl Mpv {
             }),
             Err(e) => Err(Error::ConnectError(e)),
         }
-    }
-
-    fn _disconnect(&self) {
-        self.reader.get_ref().shutdown(Shutdown::Both).expect("socket disconnect");
-    }
-
-    /// Close the mpv socket.
-    pub fn disconnect(self) {
-        self._disconnect();
     }
 
     fn _command<I: Iterator<Item = Value>>(&mut self, command: I) -> Result<Value, Error> {
