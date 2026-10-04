@@ -3,46 +3,46 @@ set -eufo pipefail
 
 mpvc playlist >/dev/null
 
-args=(
-  --ansi --no-sort --layout=reverse
-  --bind='start:reload:mpvc playlist'
-  --preview-window=up:2
-  --preview='mpvc format "%idle-active?⏹ Stopped:%[[%artist% - ]%title%%n%%pause?⏸:⏵% #%position%/%playlist-count% %time%/%duration% (%percentage%%%)%n%"]'
-)
+# We have to use %q in the enter bind in case the query string includes an fzf placeholder expression
+# In that case, printf's %q uses backslash escaping whereas bash's @Q uses single quoting
+# The latter doesn't adequately scramble the expression causing fzf to interpret it
 
-user_args=()
-for arg in "$@"; do
-  user_args+=("$(printf '%q' "$arg")")
-done
-
-path="$(printf '%q' "${BASH_SOURCE[0]}")"
-search_args=()
-for arg in "${args[@]}" \
-    --prompt="Search song > " \
-    --bind="enter:become:exec -- $path ${user_args[*]} --query={q}" \
-    --bind="esc:become:exec -- $path ${user_args[*]}" \
-    --header="mpvc-fzf help: Esc:abort Enter:search"; do
-  search_args+=("$(printf '%q' "$arg")")
-done
-
+prompt='Select song > '
+header='mpvc-fzf help: Enter:play /:filter r:reload space:toggle p:toggle x:remove <:prev >:next l:seek h:rewind f:jump'
+keys='change,q,j,k,d,u,g,G,f,r,space,p,x,<,>,l,h'
 query="$*"
-SHELL="/bin/bash" exec fzf "${args[@]}" \
-  --prompt="Select song > " \
+exec fzf \
+  --ansi --no-sort --layout=reverse \
+  --prompt="$prompt" \
+  --query="$query" \
+  --preview-window=up:2 \
+  --preview='mpvc format "%idle-active?⏹ Stopped:%[[%artist% - ]%title%%n%%pause?⏸:⏵% #%position%/%playlist-count% %time%/%duration% (%percentage%%%)%n%]"' \
+  --header="$header" \
+  --bind='start:reload:mpvc playlist' \
   --bind="change:change-query:$query" \
   --bind=q:abort \
   --bind=j:down,k:up \
   --bind=d:half-page-down,u:half-page-up \
-  --bind=space:page-down,backspace:page-up \
   --bind=g:first,G:last \
   --bind=f:jump \
   --bind='r:reload:mpvc playlist' \
-  --bind='p:reload:mpvc toggle; mpvc playlist' \
+  --bind='space:reload:mpvc toggle; mpvc playlist' \
+  --bind=p:trigger:space \
   --bind='x:reload:mpvc remove -- {n}; sleep 0.1; mpvc playlist' \
   --bind='<:reload:mpvc prev; sleep 0.1; mpvc playlist' \
   --bind='>:reload:mpvc next; sleep 0.1; mpvc playlist' \
   --bind='l:reload:mpvc seek -- 5; mpvc playlist' \
   --bind='h:reload:mpvc seek -- -5; mpvc playlist' \
-  --bind='enter:reload:mpvc position -- {n}; sleep 0.1; mpvc playlist' \
-  --bind="/:become:mpvc playlist >/dev/null && exec fzf ${search_args[*]} ${user_args[*]} --query={q}" \
-  --header="mpvc-fzf help: Enter:play /:search r:reload p:toggle x:remove <:prev >:next l:seek h:rewind f:jump" \
-  "$@"
+  --bind="enter:transform:
+    if [ \"\$FZF_PROMPT\" = '$prompt' ]; then
+      printf 'reload:mpvc position -- {n}; sleep 0.1; mpvc playlist'
+    else
+      printf 'become:exec %s %q' ${BASH_SOURCE[0]@Q} \"\$FZF_QUERY\"
+    fi" \
+  --bind="esc:transform:
+    if [ \"\$FZF_PROMPT\" = '$prompt' ]; then
+      printf 'abort'
+    else
+      printf 'rebind($keys)+change-prompt($prompt)+change-header($header)+trigger(change)'
+    fi" \
+  --bind="/:unbind($keys)+change-prompt(Filter songs > )+change-header(mpvc-fzf help: Esc:abort Enter:filter)"
